@@ -1,0 +1,23 @@
+{
+  "name": "CamOnDagster",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "cacheFrom": "camondagster-app:latest",
+    "context": ".."
+  },
+  "runArgs": [
+    "--cpus=4",
+    "--memory=4g",
+    "--init"
+  ],
+  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt && (cd dbt && dbt deps)",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "dbt.profilesDir": "${containerWorkspaceFolder}/dbt",
+        "python.linting.enabled": true
+      }
+    }
+  }
+}

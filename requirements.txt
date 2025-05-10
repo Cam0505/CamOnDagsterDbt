@@ -1,0 +1,33 @@
+
+# dbt and MySQL adapter
+dbt-core==1.9.4
+dbt-duckdb==1.9.3
+# Core Dagster
+dagster==1.10.14
+dagster-webserver==1.10.14
+dagster-dbt==0.26.14
+dagster-dlt==0.26.14
+
+# dlt and dependencies
+dlt==1.10.0
+duckdb==1.2.2
+gitdb==4.0.12
+
+google-api-core==2.24.2
+google-api-python-client==2.169.0
+google-auth==2.40.0
+
+# Data processing
+pandas==2.2.3
+numpy==2.2.5  
+
+# Google Sheets
+gspread==6.2.0
+
+# Development tools
+python-dotenv==1.1.0
+psycopg2-binary==2.9.10
+
+# Additional dependencies for data pipelines
+pyarrow>=10.0.0  # Often needed for pandas/dlt
+sqlalchemy>=2.0.40  # Required by dbt-core
