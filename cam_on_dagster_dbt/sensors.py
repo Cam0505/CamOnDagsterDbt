@@ -1,8 +1,8 @@
 from dagster import RunRequest, SensorDefinition
-from .jobs.jobs import cams_job
+from .jobs.jobs import run_dbt_assets
 
 camon_sensor = SensorDefinition(
     name="cam_sensor",
-    evaluation_fn=lambda _: [RunRequest(run_key=None, job=cams_job)],
+    evaluation_fn=lambda _: [RunRequest(run_key=None, job=run_dbt_assets)],
     minimum_interval_seconds=60 * 5,
 )

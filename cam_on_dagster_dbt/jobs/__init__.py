@@ -1,1 +1,1 @@
-from .gsheets_pipeline import gsheets_financial_job
+from .gsheets_job import gsheets_financial_with_dbt_job

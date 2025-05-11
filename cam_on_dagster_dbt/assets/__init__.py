@@ -4,3 +4,5 @@
 # It allows for the assets package to be recognized and for easier imports in other modules.
 
 from .dbt_assets import camon_dbt_assets
+from .gsheets_assets import gsheet_finance_data
+from .gsheets_customdbt import run_dbt_command

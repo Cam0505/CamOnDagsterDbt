@@ -1,18 +1,18 @@
 from pathlib import Path
-from dagster_dbt import load_assets_from_dbt_project, DbtProject
+from dagster import asset, Output, OutputContext, AssetExecutionContext
+from dagster_dbt import DbtCliResource, DbtProject, dbt_assets
+import os
 
 # Define paths
-DBT_PROJECT_PATH = Path(__file__).joinpath("..", "..", "dbt").resolve()
-DBT_PACKAGED_PATH = Path(__file__).joinpath("..", "dbt-project").resolve()
+DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
+dbt = DbtCliResource(project_dir=os.fspath(DBT_PROJECT_DIR))
 
-# Load dbt project
-camon_dbt_project = DbtProject(
-    project_dir=DBT_PROJECT_PATH,
-    packaged_project_dir=DBT_PACKAGED_PATH,
-)
 
-# Load Dagster assets from dbt
-camon_dbt_assets = load_assets_from_dbt_project(
-    project_dir=DBT_PROJECT_PATH,
-    profiles_dir=DBT_PROJECT_PATH / "profiles"
-)
+dbt_manifest_path = DBT_PROJECT_DIR.joinpath("target", "manifest.json")
+
+
+@dbt_assets(manifest=dbt_manifest_path,
+            io_manager_key="io_manager", name="camon_dbt_assets")
+def camon_dbt_assets(context: AssetExecutionContext, dbt: DbtCliResource):
+    """Run dbt build command and return result."""
+    yield from dbt.cli(["build"], context=context).stream()
