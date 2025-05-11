@@ -14,6 +14,9 @@ A containerized data engineering project combining [Dagster](https://dagster.io/
 ├── .devcontainer/ # Dev container setup
 ├── .github/workflows/ # GitHub Actions CI
 ├── docker-compose.yml
+├── requirements.txt
+├── workspace.yaml
+├── dagster.yaml
 └── README.md```
 
 ## ⚙️ Stack
