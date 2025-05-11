@@ -4,7 +4,7 @@ A containerized data engineering project combining [Dagster](https://dagster.io/
 
 ## 🧱 Project Structure
 
-CamOnDagsterDbt/
+```CamOnDagsterDbt/
 ├── cam_on_dagster_dbt/ # Dagster jobs and assets
 ├── dbt/ # dbt models and configs
 │ ├── models/
@@ -14,7 +14,7 @@ CamOnDagsterDbt/
 ├── .devcontainer/ # Dev container setup
 ├── .github/workflows/ # GitHub Actions CI
 ├── docker-compose.yml
-└── README.md
+└── README.md```
 
 ## ⚙️ Stack
 
@@ -31,8 +31,23 @@ This repo includes a basic GitHub Actions CI pipeline that:
 
 Installs dbt
 
-Runs dbt build using a temporary DuckDB path  (To be Added
+Runs dbt build using a temporary DuckDB path  
 
 Fails if any models or dependencies are missing
 
-⚠️ Note: Since the DuckDB file isn't stored in the repo, and no source tables are seeded in CI, only isolated models that don’t rely on source freshness will pass.
+⚠️ Note: Since the DuckDB file isn't stored in the repo, and no source tables are seeded in CI, only isolated models that don’t rely on source data will pass (Dim_Date).
+
+
+🔐 Secrets
+CI uses the following GitHub secret:
+
+Secret Name	Purpose
+DBT_DUCKDB_PATH	Path to DuckDB file in CI workflow
+
+
+📝 Notes
+The .duckdb database file is ignored from git (.gitignore)
+
+profiles.yml is stored inside dbt/ and not committed for security
+
+This repo is meant for local development and experimentation
