@@ -16,8 +16,12 @@
     "vscode": {
       "settings": {
         "dbt.profilesDir": "${containerWorkspaceFolder}/dbt",
-        "python.linting.enabled": true
+        "python.linting.enabled": true,
+        "python.envFile": "${containerWorkspaceFolder}/.env"
       }
     }
+  },
+  "containerEnv": {
+    "PYTHONPATH": "/workspaces/CamOnDagster"
   }
 }

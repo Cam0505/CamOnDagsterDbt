@@ -1,0 +1,4 @@
+# workspace.yaml
+
+load_from:
+  - python_file: cam_on_dagster_dbt/__init__.py

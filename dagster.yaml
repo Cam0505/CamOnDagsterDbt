@@ -1,0 +1,9 @@
+# dagster.yaml
+
+execution:
+  config:
+    multiprocess:
+      max_concurrent: 4
+
+telemetry:
+  enabled: false

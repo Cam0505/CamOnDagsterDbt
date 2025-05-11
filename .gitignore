@@ -1,49 +1,46 @@
-# Git-related files
+# === Git ===
 .git
 
-# Python
-*.pyc
-*.pyo
-*.pyd
+# === Python ===
 __pycache__/
+*.py[cod]
 *.so
+*.log
 
-# Virtual environment
+# === Virtual Environments ===
+.venv/
 venv/
 env/
-.env/
-.venv
 
-# Jupyter Notebooks
+# === Dotenv / Local Environment Files ===
+.env
+.env.*
+*.local
+
+# === Dagster ===
+*.dagster/
+cam_on_dagster_dbt/jobs/.dlt/
+cam_on_dagster_dbt/jobs/.dlt/secrets.toml
+
+# === Jupyter Notebooks ===
 .ipynb_checkpoints/
 
-# VS Code
+# === VS Code ===
 .vscode/
 
+# === DB / DuckDB ===
 *.duckdb
 *.db
 
-# Docker
+# === Docker ===
 .docker/
 docker-compose.override.yml
 
-# Local directories
-keys/  # Don't commit the service account JSON
-# *.dagster/  # dagster directories (if you don't want to track them)
-
-# Local config files
-*.env  # Don't commit environment variable files
-*.local  # Local configuration files (for example, .env.local)
-.env
-
-# Google Cloud credentials
-*.json  # Don't commit sensitive service account files directly
-# Specifically ignore the service account key
-keys/credentials.json
+# === DBT ===
 dbt/profiles.yml
 dbt/dbt_packages/
 
-pipelines/.dlt 
-pipelines/.dlt/secrets.toml
-
-.log
+# === Google Cloud / Secrets ===
+keys/
+keys/credentials.json
+*.json

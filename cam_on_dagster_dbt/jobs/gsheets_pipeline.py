@@ -8,8 +8,8 @@ from dagster import job, op, Definitions, ScheduleDefinition
 
 import dlt
 
-# Load environment variables
-load_dotenv(dotenv_path="../.env")
+# Load environment variables from .env (adjust path if needed)
+load_dotenv(dotenv_path="../../.env")
 
 
 @op
@@ -35,10 +35,8 @@ def extract_data_from_gsheet(context, sheet_name: str) -> pd.DataFrame:
 
 @op
 def load_data_to_duckdb(context, df: pd.DataFrame) -> bool:
-    """Returns True if data was loaded (i.e. df was not empty)"""
     if df.empty:
-        context.log.warning(
-            "No data found in Google Sheets. Skipping load and dbt.")
+        context.log.warning("No data found in Google Sheets.")
         return False
 
     pipeline = dlt.pipeline(
@@ -54,8 +52,8 @@ def load_data_to_duckdb(context, df: pd.DataFrame) -> bool:
         write_disposition="merge",
         primary_key="Id"
     )
+
     context.log.info(f"Load info: {load_info}")
-    context.log.info(f"Loaded data to DuckDB table gsheet_finance")
     return True
 
 
@@ -73,6 +71,7 @@ def run_dbt_command(context, should_run: bool):
         capture_output=True,
         text=True
     )
+
     context.log.info("STDOUT:\n" + result.stdout)
     context.log.error("STDERR:\n" + result.stderr)
 
@@ -90,21 +89,9 @@ def gsheets_financial_job():
     run_dbt_command(did_load)
 
 
-# Run every 3 minutes for testing
 every_3_minutes_schedule = ScheduleDefinition(
     job=gsheets_financial_job,
     cron_schedule="*/3 * * * *",
     execution_timezone="UTC",
     name="every_3_minutes_schedule",
 )
-
-# Register job and schedule
-defs = Definitions(
-    jobs=[gsheets_financial_job],
-    schedules=[every_3_minutes_schedule]
-)
-
-# Optional: Local manual testing
-if __name__ == "__main__":
-    result = gsheets_financial_job.execute_in_process()
-    print("Job finished:", result.success)
