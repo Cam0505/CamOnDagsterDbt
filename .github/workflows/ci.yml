@@ -33,8 +33,29 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          
+      # Step 4
+      - name: Set up DBT profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<EOF
+          CamOnDagster:
+            outputs:
+              dev:
+                type: duckdb
+                path: ${{ secrets.DBT_DUCKDB_PATH }}
+                extensions:
+                  - httpfs
+                  - parquet
+                threads: 2
+            target: dev
+          EOF
      
       # Step 5: Install DBT package dependencies
       - name: Install DBT dependencies
         run: |
           cd dbt && dbt deps
+     
+      # Run Dim Date because it doesn't dependent on other pipelines, makes sure the database and dbt work
+      - name: Run DBT build
+        run: cd dbt && dbt build --select dim_date
