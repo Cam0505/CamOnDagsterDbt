@@ -20,8 +20,12 @@ def gsheet_finance_data(context) -> bool:
     )
     # Authorize the client
     client = gspread.authorize(creds)
+    SHEET_NAME = os.getenv('GOOGLE_SHEET_NAME')
+    if not SHEET_NAME:
+        raise ValueError(
+            "Environment variable GOOGLE_SHEET_NAME is not set or empty.")
     # Open the Google Sheet
-    sheet = client.open(os.getenv('GOOGLE_SHEET_NAME')).sheet1
+    sheet = client.open(SHEET_NAME).sheet1
     # Get all records from the sheet
     data = sheet.get_all_records()
     # Convert to DataFrame
