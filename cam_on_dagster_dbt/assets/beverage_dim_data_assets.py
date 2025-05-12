@@ -75,6 +75,8 @@ def dimension_data(context) -> bool:
                 f"Table `{dimension}` needs update: expected {config['row_count']}, found {current}")
             needs_update = True
 
+    # Assumes that Dimensions won't change, API is unlikely to change so this is just a check to prevent reloading
+    # Would need to check API JSON Length for each table to be more accurate
     if not needs_update:
         context.log.info(
             "All Dimension Data tables are up to date. Skipping DLT pipeline.")

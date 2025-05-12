@@ -1,0 +1,25 @@
+version: 2
+models:
+- name: base_beverages
+  description: "{{ doc('base_beverages') }}"
+  columns:
+  - name: beverage_name
+    description: "{{ doc('beverage_name') }}"
+    data_tests:
+    - not_null
+    - unique
+  - name: beverage_id
+    description: "{{ doc('beverage_id') }}"
+    data_tests:
+    - not_null
+    - unique
+  - name: beverage_type
+    description: "{{ doc('beverage_id') }}"
+  - name: beverage_category_sk
+    description: "{{ doc('beverage_category_sk') }}"
+  - name: alcoholic_type
+    description: "{{ doc('alcoholic_type') }}"
+    data_tests:
+    - accepted_values:
+        values: ['Non alcoholic', 'Optional alcohol', 'Alcoholic']
+        quote: true

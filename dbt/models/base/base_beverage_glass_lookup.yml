@@ -1,0 +1,12 @@
+version: 2
+models:
+- name: base_beverage_glass_lookup
+  description: ''
+  columns:
+  - name: glass_type
+    description: ''
+    data_tests:
+    - not_null
+    - unique
+  - name: glass_type_sk
+    description: ''

@@ -1,0 +1,23 @@
+version: 2
+models:
+- name: dim_beverage_ingredient_hierarchy
+  description: ''
+  columns:
+  - name: ingredient
+    description: ''
+  - name: beverage_id
+    description: ''
+  - name: beverage_name
+    description: ''
+  - name: ingredient2
+    description: ''
+  - name: ingredient3
+    description: ''
+  - name: ingredient4
+    description: ''
+  - name: ingredient5
+    description: ''
+  - name: ingredient6
+    description: ''
+  - name: ingredient7
+    description: ''

@@ -1,0 +1,19 @@
+version: 2
+models:
+- name: staging_beverage_lookup
+  description: ''
+  columns:
+  - name: beverage_name
+    description: ''
+  - name: beverage_id
+    description: ''
+  - name: beverage_type
+    description: ''
+  - name: beverage_type_sk
+    description: ''
+  - name: beverage_category_sk
+    description: ''
+  - name: alcoholic_type
+    description: ''
+  - name: alcoholic_type_sk
+    description: ''

@@ -1,0 +1,49 @@
+version: 2
+models:
+- name: staging_beverage_consumption
+  description: ''
+  columns:
+  - name: beverage_id
+    description: "{{ doc('beverage_id') }}"
+  - name: beverage_name
+    description: "{{ doc('beverage_name') }}"
+  - name: beverage_category_sk
+    description: "{{ doc('beverage_category_sk') }}"
+  - name: glass_type
+    description: "{{ doc('glass_type') }}"
+  - name: beverage_type_sk
+    description: ''
+  - name: beverage_type
+    description: "{{ doc('beverage_type') }}"
+  - name: alcoholic_type_sk
+    description: ''
+  - name: alcoholic_type
+    description: "{{ doc('alcoholic_type') }}"
+  - name: str_category
+    description: ''
+  - name: str_alcoholic
+    description: ''
+  - name: glass_type_sk
+    description: ''
+  - name: beverage_instructions
+    description: ''
+  - name: beverage_url
+    description: ''
+  - name: date_melbourne
+    description: ''
+  - name: str_ingredient1
+    description: ''
+  - name: str_ingredient2
+    description: ''
+  - name: str_ingredient3
+    description: ''
+  - name: str_ingredient4
+    description: ''
+  - name: str_ingredient5
+    description: ''
+  - name: str_ingredient6
+    description: ''
+  - name: str_ingredient7
+    description: ''
+  - name: str_ingredient8
+    description: ''

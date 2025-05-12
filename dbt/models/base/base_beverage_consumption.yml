@@ -1,0 +1,42 @@
+version: 2
+models:
+- name: base_beverage_consumption
+  description: ''
+  columns:
+  - name: id_drink
+    description: ''
+    data_tests:
+    - not_null
+    - relationships:
+        to: ref('base_beverages')
+        field: beverage_id
+  - name: str_drink
+    description: ''
+  - name: str_category
+    description: ''
+  - name: str_alcoholic
+    description: ''
+  - name: str_glass
+    description: ''
+  - name: str_instructions
+    description: ''
+  - name: str_drink_thumb
+    description: ''
+  - name: date_melbourne
+    description: ''
+  - name: str_ingredient1
+    description: ''
+  - name: str_ingredient2
+    description: ''
+  - name: str_ingredient3
+    description: ''
+  - name: str_ingredient4
+    description: ''
+  - name: str_ingredient5
+    description: ''
+  - name: str_ingredient6
+    description: ''
+  - name: str_ingredient7
+    description: ''
+  - name: str_ingredient8
+    description: ''

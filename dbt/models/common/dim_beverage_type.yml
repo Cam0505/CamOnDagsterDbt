@@ -1,0 +1,13 @@
+version: 2
+models:
+- name: dim_beverage_type
+  description: ''
+  columns:
+  - name: beverage_type
+    description: ''
+  - name: alcoholic_type
+    description: ''
+  - name: beverage_category_sk
+    description: ''
+  - name: alcoholic_type_sk
+    description: ''

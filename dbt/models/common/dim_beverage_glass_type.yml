@@ -1,0 +1,9 @@
+version: 2
+models:
+- name: dim_beverage_glass_type
+  description: ''
+  columns:
+  - name: glass_type
+    description: ''
+  - name: glass_type_sk
+    description: ''

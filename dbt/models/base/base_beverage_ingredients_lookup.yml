@@ -1,0 +1,16 @@
+version: 2
+models:
+- name: base_beverage_ingredients_lookup
+  description: ''
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      combination_of_columns:
+      - ingredient
+      - beverage_id
+  columns:
+  - name: ingredient
+    description: ''
+  - name: beverage_id
+    description: ''
+  - name: beverage_name
+    description: ''
