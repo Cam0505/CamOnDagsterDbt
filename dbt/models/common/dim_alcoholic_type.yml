@@ -1,0 +1,9 @@
+version: 2
+models:
+- name: dim_alcoholic_type
+  description: ''
+  columns:
+  - name: alcoholic_type
+    description: ''
+  - name: alcoholic_type_sk
+    description: ''

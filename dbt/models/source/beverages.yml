@@ -1,0 +1,21 @@
+version: 2
+
+sources:
+  - name: beverages
+    database: camondagster
+    schema: beverage_data
+    tables:
+    # Alcoholic Type
+      - name: alcoholic
+      - name: alcoholic_table
+    # Consumption Fact
+      - name: consumption
+    # Beverage Type
+      - name: beverages
+      - name: beverages_table
+    # Glass Type
+      - name: glasses
+      - name: glass_table
+    # Ingredients
+      - name: ingredients
+      - name: ingredients_table

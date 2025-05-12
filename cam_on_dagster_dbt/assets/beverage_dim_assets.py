@@ -55,6 +55,8 @@ def beverage_dim_data(context) -> bool:
                 f"Table `{table}` needs update: expected {expected}, found {current}")
             needs_update = True
 
+    # Assumes that Dimensions won't change, API is unlikely to change so this is just a check to prevent reloading
+    # Would need to check API JSON Length for each table to be more accurate
     if not needs_update:
         context.log.info(
             "All Dimension tables are up to date. Skipping DLT pipeline.")

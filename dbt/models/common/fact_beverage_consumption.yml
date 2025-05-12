@@ -1,0 +1,45 @@
+version: 2
+models:
+- name: fact_beverage_consumption
+  description: ''
+  columns:
+  - name: beverage_id
+    description: ''
+  - name: beverage_name
+    description: ''
+  - name: glass_type_sk
+    description: ''
+  - name: beverage_category_sk
+    description: ''
+  - name: beverage_type_sk
+    description: ''
+  - name: alcoholic_type_sk
+    description: ''
+  - name: beverage_type
+    description: ''
+  - name: alcoholic_type
+    description: ''
+  - name: beverage_instructions
+    description: ''
+  - name: beverage_url
+    description: ''
+  - name: glass_type
+    description: ''
+  - name: date_melbourne
+    description: ''
+  - name: str_ingredient1
+    description: ''
+  - name: str_ingredient2
+    description: ''
+  - name: str_ingredient3
+    description: ''
+  - name: str_ingredient4
+    description: ''
+  - name: str_ingredient5
+    description: ''
+  - name: str_ingredient6
+    description: ''
+  - name: str_ingredient7
+    description: ''
+  - name: str_ingredient8
+    description: ''
