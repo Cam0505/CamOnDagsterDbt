@@ -1,0 +1,12 @@
+version: 2
+models:
+- name: base_meal_ingredients
+  description: ''
+  columns:
+  - name: ingredient_id
+    description: ''
+    data_tests:
+    - unique
+    - not_null
+  - name: ingredient_name
+    description: ''

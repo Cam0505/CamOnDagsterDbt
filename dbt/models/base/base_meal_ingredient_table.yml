@@ -1,0 +1,16 @@
+version: 2
+models:
+- name: base_meal_ingredient_table
+  description: ''
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      combination_of_columns:
+      - ingredient_name
+      - meal_id
+  columns:
+  - name: meal_name
+    description: ''
+  - name: meal_id
+    description: ''
+  - name: ingredient_name
+    description: ''

@@ -1,0 +1,13 @@
+version: 2
+models:
+- name: staging_meal_ingredients_lookup
+  description: ''
+  columns:
+  - name: meal_name
+    description: ''
+  - name: meal_id
+    description: ''
+  - name: ingredient_name
+    description: ''
+  - name: ingredient_id
+    description: ''
