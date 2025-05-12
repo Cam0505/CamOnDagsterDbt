@@ -1,0 +1,30 @@
+version: 2
+models:
+- name: dim_date
+  description: ''
+  columns:
+  - name: date_col
+    description: ''
+    data_tests:
+      - unique
+      - not_null
+  - name: year
+    description: ''
+  - name: month
+    description: ''
+  - name: day
+    description: ''
+  - name: month_name
+    description: ''
+  - name: weekday_name
+    description: ''
+  - name: day_of_week
+    description: ''
+  - name: is_weekend
+    description: ''
+  - name: day_of_year
+    description: ''
+  - name: week_of_year
+    description: ''
+  - name: quarter
+    description: ''
