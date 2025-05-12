@@ -1,8 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.beverage_dim_assets import beverage_dim_data
-from cam_on_dagster_dbt.assets.beverage_dim_data_assets import dimension_data
-from cam_on_dagster_dbt.assets.beverage_fact_assets import beverage_fact_data
-from cam_on_dagster_dbt.assets.beverage_dbtBuild import dbt_beverage_data
+from cam_on_dagster_dbt.assets.Beverages import beverage_dim_data, dimension_data, beverage_fact_data, dbt_beverage_data
 
 
 @job

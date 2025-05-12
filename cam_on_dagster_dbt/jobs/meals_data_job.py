@@ -1,8 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.meals_dim_assets import meals_dim_data
-from cam_on_dagster_dbt.assets.meals_dim_data_assets import meals_dimension_data
-from cam_on_dagster_dbt.assets.meals_fact_assets import meals_fact_data
-from cam_on_dagster_dbt.assets.meals_dbtBuild import dbt_meals_data
+from cam_on_dagster_dbt.assets.Meals import meals_dim_data, meals_dimension_data, meals_fact_data, dbt_meals_data
 
 
 @job
