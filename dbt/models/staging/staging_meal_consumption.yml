@@ -1,0 +1,63 @@
+version: 2
+models:
+- name: staging_meal_consumption
+  description: ''
+  columns:
+  - name: meal_id
+    description: ''
+  - name: meal_name
+    description: ''
+  - name: category_name
+    description: ''
+  - name: country_name
+    description: ''
+  - name: meal_country_category_sk
+    description: ''
+  - name: instructions
+    description: ''
+  - name: meal_image_url
+    description: ''
+  - name: meal_youtube_url
+    description: ''
+  - name: str_ingredient1
+    description: ''
+  - name: str_ingredient2
+    description: ''
+  - name: str_ingredient3
+    description: ''
+  - name: str_ingredient4
+    description: ''
+  - name: str_ingredient5
+    description: ''
+  - name: str_ingredient6
+    description: ''
+  - name: str_ingredient7
+    description: ''
+  - name: str_ingredient8
+    description: ''
+  - name: str_ingredient9
+    description: ''
+  - name: str_ingredient10
+    description: ''
+  - name: str_ingredient11
+    description: ''
+  - name: str_ingredient12
+    description: ''
+  - name: str_ingredient13
+    description: ''
+  - name: str_ingredient14
+    description: ''
+  - name: str_ingredient15
+    description: ''
+  - name: str_ingredient16
+    description: ''
+  - name: str_ingredient17
+    description: ''
+  - name: str_ingredient18
+    description: ''
+  - name: str_ingredient19
+    description: ''
+  - name: str_ingredient20
+    description: ''
+  - name: meal_url
+    description: ''
