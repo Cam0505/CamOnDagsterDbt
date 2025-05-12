@@ -18,9 +18,13 @@ def gsheet_finance_data(context) -> bool:
             'https://www.googleapis.com/auth/drive'
         ]
     )
+    # Authorize the client
     client = gspread.authorize(creds)
-    sheet = client.open(os.getenv("GOOGLE_SHEET_NAME")).sheet1
+    # Open the Google Sheet
+    sheet = client.open(os.getenv('GOOGLE_SHEET_NAME')).sheet1
+    # Get all records from the sheet
     data = sheet.get_all_records()
+    # Convert to DataFrame
     df = pd.DataFrame(data)
 
     if df.empty:
