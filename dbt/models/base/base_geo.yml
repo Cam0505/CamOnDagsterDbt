@@ -1,0 +1,49 @@
+version: 2
+models:
+- name: base_geo
+  description: "{{ doc('base_geo_description') }}"
+  config:
+    contract:
+      enforced: true
+  columns:
+  - name: city_id
+    description: ''
+    data_type: bigint
+    data_tests:
+    - not_null
+    - unique
+  - name: city
+    description: "{{ doc('city') }}"
+    data_type: varchar
+  - name: latitude
+    description: "{{ doc('latitude') }}"
+    data_type: double precision
+    data_tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: -90
+        max_value: 90
+        strictly: false
+  - name: longitude
+    description: "{{ doc('longitude') }}"
+    data_type: double precision
+    data_tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: -180
+        max_value: 180
+        strictly: false
+  - name: country_code
+    description: ''
+    data_type: varchar
+    data_tests:
+    - accepted_values:
+        values: ['AU', 'NZ', 'CA', 'GB']
+        quote: true
+  - name: country
+    description: "{{ doc('country') }}"
+    data_type: varchar
+  - name: region
+    description: "{{ doc('region') }}"
+    data_type: varchar
+  - name: continent
+    description: "{{ doc('continent') }}"
+    data_type: varchar

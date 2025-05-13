@@ -1,0 +1,14 @@
+version: 2
+models:
+- name: dim_country
+  description: ''
+  columns:
+  - name: country_code
+    description: ''
+  - name: country
+    description: ''
+  - name: country_sk
+    description: ''
+    data_tests:
+    - not_null
+    - unique # May seem pointless, however, this is to ensure that the API doesn't mistakenly have 2 codes per country

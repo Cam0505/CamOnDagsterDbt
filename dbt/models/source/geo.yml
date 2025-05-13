@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: geo
+    database: camondagster
+    schema: geo_data
+
+    tables:
+      - name: geo_cities
