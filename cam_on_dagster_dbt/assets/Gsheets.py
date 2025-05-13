@@ -8,15 +8,33 @@ import duckdb
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 import dlt
-import time
-from datetime import datetime, timedelta
+import time as t
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
 
+# Prevent Accidental Manual Execution Outside of ASX Hours
+
+
+def is_within_asx_hours() -> bool:
+    now_sydney = datetime.now(ZoneInfo("Australia/Sydney"))
+    if now_sydney.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+        return False
+
+    market_open = time(10, 0)
+    market_close = time(16, 0)
+
+    return market_open <= now_sydney.time() <= market_close
+
 
 @asset(compute_kind="python")
 def gsheet_finance_data(context) -> bool:
+
+    if not is_within_asx_hours():
+        context.log.info("⛔️ Skipped: Outside ASX trading hours.")
+        return False
+
     creds = Credentials.from_service_account_file(
         os.getenv("CREDENTIALS_FILE"),
         scopes=[
@@ -46,6 +64,9 @@ def gsheet_finance_data(context) -> bool:
         context.log.warning("'DateTime' column not found in sheet.")
         return False
 
+    # Prevent A Run within 30minutes of the last run,
+    # This is for manual runs only, Scheduled runs will be scheduled to be every hour
+    # 10am to 4pm Sydney time Mon-Fri
     try:
         # Ensure 'DateTime' is correctly parsed to pandas datetime
         latest_gsheet_ts = pd.to_datetime(df['DateTime'])
@@ -132,7 +153,7 @@ def gsheet_dbt_command(context: OpExecutionContext, gsheet_finance_data: bool) -
     DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
     context.log.info(f"DBT Project Directory: {DBT_PROJECT_DIR}")
 
-    start = time.time()
+    start = t.time()
     try:
         result = subprocess.run(
             "dbt run --select base_gsheets_finance+",
@@ -143,7 +164,7 @@ def gsheet_dbt_command(context: OpExecutionContext, gsheet_finance_data: bool) -
             check=True
         )
 
-        duration = round(time.time() - start, 2)
+        duration = round(t.time() - start, 2)
         context.log.info(f"dbt build completed in {duration}s")
         context.log.info(result.stdout)
     except subprocess.CalledProcessError as e:
