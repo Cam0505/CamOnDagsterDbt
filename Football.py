@@ -1,3 +1,11 @@
+
+# Need to pay for an API Key to run this, so I'll park this for now
+# This code is a DLT pipeline that extracts data from the API-Football API and loads it into a DuckDB database.
+# It includes resources for league data, teams, fixtures, scores, players, and players per match.
+# The pipeline handles rate limits and retries requests if necessary.
+# It also includes logging for debugging purposes.
+# The pipeline is designed to be run as a standalone script, but can also be imported as a module.
+# The pipeline uses the dlt library for data loading and the requests library for API calls.
 import os
 import logging
 import requests

@@ -1,0 +1,18 @@
+version: 2
+models:
+- name: dim_city
+  description: ''
+  columns:
+  - name: city
+    description: ''
+  - name: latitude # Tested in Base table
+    description: ''
+  - name: longitude # Tested in Base table
+    description: ''
+  - name: city_sk
+    description: ''
+    data_tests:
+    - not_null
+    - unique # Ensure API hasn't pulled in data from elsewhere again, Portland US is close to Portland Canada
+  - name: country_sk
+    description: '' # Tested in Dim_Country
