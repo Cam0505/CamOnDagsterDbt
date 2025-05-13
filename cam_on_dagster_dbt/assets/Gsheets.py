@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import pandas as pd
 import gspread
+import duckdb
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 import dlt
@@ -46,20 +47,56 @@ def gsheet_finance_data(context) -> bool:
         return False
 
     try:
-        df["DateTime"] = pd.to_datetime(df["DateTime"]).dt.tz_localize(
-            ZoneInfo("Australia/Melbourne"))
-        latest_ts = df["DateTime"].max()
-        now = datetime.now(ZoneInfo("Australia/Melbourne"))
-        if latest_ts > now - timedelta(minutes=30):
+        # Ensure 'DateTime' is correctly parsed to pandas datetime
+        latest_gsheet_ts = pd.to_datetime(df['DateTime'])
+
+        if isinstance(latest_gsheet_ts, pd.Series):
+            latest_gsheet_ts = latest_gsheet_ts.max()
+
+        context.log.info(f"Latest GSheet timestamp: {latest_gsheet_ts}")
+
+        # Make latest_gsheet_ts timezone-aware if it is not
+        if latest_gsheet_ts.tzinfo is None:
+            latest_gsheet_ts = latest_gsheet_ts.tz_localize('UTC')
+
+        # ✅ Query DuckDB for the latest existing timestamp
+        db_path = os.getenv("DESTINATION__DUCKDB__CREDENTIALS")
+        if not db_path:
+            raise ValueError(
+                "Missing DuckDB path in DESTINATION__DUCKDB__CREDENTIALS")
+
+        con = duckdb.connect(db_path)
+        result = con.execute(""" 
+            SELECT MAX(date_time) AS max_dt
+            FROM google_sheets_data_staging.gsheet_finance
+            WHERE date_time IS NOT NULL
+        """).fetchone()
+        con.close()
+
+        latest_db_ts_raw = result[0] if result and result[0] else None
+        if latest_db_ts_raw:
+            latest_db_ts = pd.to_datetime(latest_db_ts_raw)
+
+            # Make latest_db_ts timezone-aware (using UTC timezone as an example)
+            if latest_db_ts.tzinfo is None:
+                latest_db_ts = latest_db_ts.tz_localize('UTC')
+
+            context.log.info(f"Latest DB timestamp: {latest_db_ts}")
+
+        buffered_db_ts = latest_db_ts + pd.Timedelta(minutes=30)
+        # Now compare both timestamps
+        if latest_gsheet_ts <= buffered_db_ts:
             context.log.info(
                 f"\n🔁 SKIPPED LOAD:\n"
-                f"📅 Latest timestamp: {latest_ts}\n"
-                f"🕒 Current time: {now}\n"
-                f"⏳ Reason: Timestamp is less than 30 minutes old.\n"
-                f"{'-'*40}")
+                f"📅 Latest GSheet timestamp: {latest_gsheet_ts}\n"
+                f"📦 Latest DB timestamp (+30min buffer): {buffered_db_ts}\n"
+                f"⏳ Reason: GSheet data is not newer than what's already in the DB.\n"
+                f"{'-'*45}"
+            )
             return False
+
     except Exception as e:
-        context.log.error(f"Failed to parse 'DateTime' column: {e}")
+        context.log.error(f"Error during datetime comparison: {e}")
         return False
 
     pipeline = dlt.pipeline(
