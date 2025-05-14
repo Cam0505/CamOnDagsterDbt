@@ -127,6 +127,7 @@ def create_dimension_resource(table_name, config, values, context):
                 if not drinks:
                     context.log.warning(
                         f"No drinks found for {config['query_param']}={value}")
+                    continue
                 for drink in drinks:
                     if isinstance(drink, dict):  # Ensure it's a dictionary
                         drink[config["source_key"]] = value
@@ -138,7 +139,7 @@ def create_dimension_resource(table_name, config, values, context):
                 state["last_run_status"] = "failed"
                 return
         # Check Previous State:
-        previous_value = state.get("processed_records")
+        previous_value = state.get("processed_records", 0)
         if total_records == previous_value or state["last_run_status"] == "failed":
             context.log.info(
                 f"🔁 SKIPPED LOAD for {config['resource_name']}:\n"
