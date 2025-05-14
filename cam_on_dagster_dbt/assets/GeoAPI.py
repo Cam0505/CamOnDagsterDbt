@@ -4,7 +4,6 @@ import requests
 from dotenv import load_dotenv
 from pathlib import Path
 import dlt
-import duckdb
 import time
 import subprocess
 
