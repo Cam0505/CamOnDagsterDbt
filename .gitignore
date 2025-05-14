@@ -19,8 +19,8 @@ env/
 
 # === Dagster ===
 *.dagster/
-cam_on_dagster_dbt/jobs/.dlt/
-cam_on_dagster_dbt/jobs/.dlt/secrets.toml
+cam_on_dagster_dbt/assets/.dlt/
+cam_on_dagster_dbt/assets/.dlt/secrets.toml
 
 # === Jupyter Notebooks ===
 .ipynb_checkpoints/
