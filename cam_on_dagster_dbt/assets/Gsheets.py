@@ -87,7 +87,7 @@ def gsheet_finance_data(context) -> bool:
                 "Missing DuckDB path in DESTINATION__DUCKDB__CREDENTIALS")
 
         con = duckdb.connect(db_path)
-        result = con.execute(""" 
+        result = con.execute("""
             SELECT MAX(date_time) AS max_dt
             FROM google_sheets_data_staging.gsheet_finance
             WHERE date_time IS NOT NULL
@@ -129,9 +129,7 @@ def gsheet_finance_data(context) -> bool:
 
     load_info = pipeline.run(
         df,
-        table_name="gsheet_Finance",
-        write_disposition="merge",
-        primary_key="Id"
+        table_name="gsheet_finance", write_disposition="append"
     )
     context.log.info(f"Loaded data: {load_info}")
     return True
