@@ -5,4 +5,4 @@ sources:
     database: camondagster
     schema: google_sheets_data
     tables:
-      - name: gsheet_Finance
+      - name: gsheets_finance

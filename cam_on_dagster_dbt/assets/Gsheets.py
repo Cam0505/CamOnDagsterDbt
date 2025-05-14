@@ -4,7 +4,6 @@ from pathlib import Path
 import os
 import pandas as pd
 import gspread
-import duckdb
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 import dlt
@@ -28,111 +27,130 @@ def is_within_asx_hours() -> bool:
     return market_open <= now_sydney.time() <= market_close
 
 
-@asset(compute_kind="python")
-def gsheet_finance_data(context) -> bool:
+@dlt.source
+def gsheet_finance_source(context: OpExecutionContext):
+    @dlt.resource(write_disposition="append", name="gsheets_finance")
+    def gsheet_finance_resource():
+        # Initialize state within the source context
+        state = dlt.current.source_state().setdefault("gsheet_finance", {
+            "latest_ts": None,
+            "last_run": None,
+            "processed_records": 0,
+            "last_run_status": None
+        })
+        context.log.info(f"Current state: {state}")
 
-    if not is_within_asx_hours():
-        context.log.info("⛔️ Skipped: Outside ASX trading hours.")
-        return False
-
-    creds = Credentials.from_service_account_file(
-        os.getenv("CREDENTIALS_FILE"),
-        scopes=[
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/drive'
-        ]
-    )
-    # Authorize the client
-    client = gspread.authorize(creds)
-    SHEET_NAME = os.getenv('GOOGLE_SHEET_NAME')
-    if not SHEET_NAME:
-        raise ValueError(
-            "Environment variable GOOGLE_SHEET_NAME is not set or empty.")
-
-    # Open the Google Sheet
-    sheet = client.open(SHEET_NAME).sheet1
-    # Get all records from the sheet
-    data = sheet.get_all_records()
-    # Convert to DataFrame
-    df = pd.DataFrame(data)
-
-    if df.empty:
-        context.log.warning("No data found.")
-        return False
-
-    if "DateTime" not in df.columns:
-        context.log.warning("'DateTime' column not found in sheet.")
-        return False
-
-    # Prevent A Run within 30minutes of the last run,
-    # This is for manual runs only, Scheduled runs will be scheduled to be every hour
-    # 10am to 4pm Sydney time Mon-Fri
-    try:
-        # Ensure 'DateTime' is correctly parsed to pandas datetime
-        latest_gsheet_ts = pd.to_datetime(df['DateTime'])
-
-        if isinstance(latest_gsheet_ts, pd.Series):
-            latest_gsheet_ts = latest_gsheet_ts.max()
-
-        context.log.info(f"Latest GSheet timestamp: {latest_gsheet_ts}")
-
-        # Make latest_gsheet_ts timezone-aware if it is not
-        if latest_gsheet_ts.tzinfo is None:
-            latest_gsheet_ts = latest_gsheet_ts.tz_localize('UTC')
-
-        # ✅ Query DuckDB for the latest existing timestamp
-        db_path = os.getenv("DESTINATION__DUCKDB__CREDENTIALS")
-        if not db_path:
-            raise ValueError(
-                "Missing DuckDB path in DESTINATION__DUCKDB__CREDENTIALS")
-
-        con = duckdb.connect(db_path)
-        result = con.execute("""
-            SELECT MAX(date_time) AS max_dt
-            FROM google_sheets_data_staging.gsheet_finance
-            WHERE date_time IS NOT NULL
-        """).fetchone()
-        con.close()
-
-        latest_db_ts_raw = result[0] if result and result[0] else None
-        if latest_db_ts_raw:
-            latest_db_ts = pd.to_datetime(latest_db_ts_raw)
-
-            # Make latest_db_ts timezone-aware (using UTC timezone as an example)
-            if latest_db_ts.tzinfo is None:
-                latest_db_ts = latest_db_ts.tz_localize('UTC')
-
-            context.log.info(f"Latest DB timestamp: {latest_db_ts}")
-
-        buffered_db_ts = latest_db_ts + pd.Timedelta(minutes=30)
-        # Now compare both timestamps
-        if latest_gsheet_ts <= buffered_db_ts:
-            context.log.info(
-                f"\n🔁 SKIPPED LOAD:\n"
-                f"📅 Latest GSheet timestamp: {latest_gsheet_ts}\n"
-                f"📦 Latest DB timestamp (+30min buffer): {buffered_db_ts}\n"
-                f"⏳ Reason: GSheet data is not newer than what's already in the DB.\n"
-                f"{'-'*45}"
+        try:
+            # Load data from Google Sheets
+            creds = Credentials.from_service_account_file(
+                os.getenv("CREDENTIALS_FILE"),
+                scopes=[
+                    'https://spreadsheets.google.com/feeds',
+                    'https://www.googleapis.com/auth/drive'
+                ]
             )
+            client = gspread.authorize(creds)
+            SHEETNAME = os.getenv("GOOGLE_SHEET_NAME")
+            if not SHEETNAME:
+                raise ValueError(
+                    "Missing GOOGLE_SHEET_NAME in .env file")
+            sheet = client.open(SHEETNAME).sheet1
+            data = sheet.get_all_records()
+
+            if not data:
+                state["last_run_status"] = "skipped_empty_data"
+                context.log.warning("No data found in sheet")
+                return
+
+            if "DateTime" not in data[0]:
+                state["last_run_status"] = "skipped_missing_datetime"
+                context.log.warning("DateTime column missing")
+                return
+
+            # Process data and track timestamps
+            df = pd.DataFrame(data)
+            df['DateTime'] = pd.to_datetime(
+                df['DateTime']).dt.tz_localize('UTC')
+            latest_gsheet_ts = df['DateTime'].max()
+            context.log.info(f"Latest sheet timestamp: {latest_gsheet_ts}")
+
+            # Check for new data
+            if state["latest_ts"]:
+                latest_state_ts = pd.to_datetime(state["latest_ts"])
+                buffered_ts = latest_state_ts + pd.Timedelta(minutes=30)
+
+                if latest_gsheet_ts <= buffered_ts:
+                    state.update({
+                        "last_run": datetime.now(ZoneInfo("UTC")).isoformat(),
+                        "last_run_status": "skipped_no_new_data"
+                    })
+                    context.log.info(
+                        f"\n🔁 SKIPPED LOAD:\n"
+                        f"📅 GSheet timestamp: {latest_gsheet_ts}\n"
+                        f"📦 Buffered DLT state timestamp: {buffered_ts}\n"
+                        f"⏳ Reason: No new data within 30-minute window.\n"
+                        f"{'-'*45}"
+                    )
+                    return
+
+            # Filter for new data
+            if state["latest_ts"]:
+                df = df[df['DateTime'] > pd.to_datetime(state["latest_ts"])]
+
+            # Update state
+            state.update({
+                "latest_ts": latest_gsheet_ts.isoformat(),
+                "last_run": datetime.now(ZoneInfo("UTC")).isoformat(),
+                "processed_records": len(df),
+                "last_run_status": "loaded"
+            })
+
+            context.log.info(f"Loading {len(df)} new records")
+            for record in df.to_dict('records'):
+                yield record
+
+        except Exception as e:
+            state["last_run_status"] = f"failed: {str(e)}"
+            context.log.error(f"Processing failed: {e}")
+            raise
+
+    return gsheet_finance_resource
+
+
+@asset(compute_kind="python")
+def gsheet_finance_data(context: OpExecutionContext) -> bool:
+    if not is_within_asx_hours():
+        context.log.info("Outside ASX trading hours - skipping")
+        return False
+
+    try:
+        pipeline = dlt.pipeline(
+            pipeline_name="gsheets_to_duckdb",
+            destination="duckdb",
+            dataset_name="google_sheets_data", dev_mode=False
+        )
+
+        # Get the source
+        source = gsheet_finance_source(context)
+
+        # Check if there's actually data to load
+        data_loaded = False
+        for _ in source.gsheets_finance():
+            data_loaded = True
+            break  # Just check if there's at least one record
+
+        if not data_loaded:
+            context.log.info("No new data to load - skipping DBT run")
             return False
 
+        # Only run the full pipeline if there's data
+        load_info = pipeline.run(source)
+        context.log.info(f"Load result: {load_info}")
+        return True
+
     except Exception as e:
-        context.log.error(f"Error during datetime comparison: {e}")
+        context.log.error(f"Pipeline failed: {e}")
         return False
-
-    pipeline = dlt.pipeline(
-        pipeline_name="gsheets_to_duckdb",
-        destination="duckdb",
-        dataset_name="google_sheets_data",
-        dev_mode=False
-    )
-
-    load_info = pipeline.run(
-        df,
-        table_name="gsheet_finance", write_disposition="append"
-    )
-    context.log.info(f"Loaded data: {load_info}")
-    return True
 
 
 @asset(deps=["gsheet_finance_data"])
@@ -154,7 +172,7 @@ def gsheet_dbt_command(context: OpExecutionContext, gsheet_finance_data: bool) -
     start = t.time()
     try:
         result = subprocess.run(
-            "dbt run --select base_gsheets_finance+",
+            "dbt run --select source:gsheets+",
             shell=True,
             cwd=DBT_PROJECT_DIR,
             capture_output=True,

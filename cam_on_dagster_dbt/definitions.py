@@ -38,6 +38,6 @@ if __name__ == "__main__":
     # result = gsheets_financial_with_dbt_job.execute_in_process()
     try:
         result = gsheets_financial_with_dbt_job.execute_in_process()
-        print("Beverage Job finished:", result.success)
+        print("GSheets Job finished:", result.success)
     except Exception as e:
         print(f"Error executing job: {e}")
