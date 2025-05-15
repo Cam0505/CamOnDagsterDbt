@@ -27,6 +27,30 @@ resource "google_service_account" "dagster_sa" {
 
 resource "google_project_iam_member" "dagster_bigquery_access" {
   project = var.project_id
-  role    = "roles/bigquery.dataEditor"  # adjust role as needed
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.dagster_sa.email}"
+}
+
+resource "google_project_iam_member" "dagster_bigquery_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.dagster_sa.email}"
+}
+
+resource "google_project_iam_member" "dagster_cloudfunctions_invoker" {
+  project = var.project_id
+  role    = "roles/cloudfunctions.invoker"
+  member  = "serviceAccount:${google_service_account.dagster_sa.email}"
+}
+
+resource "google_project_iam_member" "dagster_service_account_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.dagster_sa.email}"
+}
+
+resource "google_project_iam_member" "dagster_viewer" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountViewer"
   member  = "serviceAccount:${google_service_account.dagster_sa.email}"
 }
