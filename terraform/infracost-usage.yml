@@ -1,0 +1,10 @@
+version: 0.1
+
+resource_usage:
+  google_bigquery_dataset.dagster_dataset:
+    monthly_query_tb: 0.5          # e.g. 0.5 TB queries per month
+    storage_tb: 0.3
+
+  google_cloudfunctions_function.my_function:
+    monthly_invocations: 3000     # number of Cloud Function calls
+    avg_request_duration_ms: 200   # average request duration in milliseconds
