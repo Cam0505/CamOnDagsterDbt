@@ -43,6 +43,16 @@ dbt/dbt_packages/
 # === Google Cloud / Secrets ===
 keys/
 keys/credentials.json
+keys/dagster-sa-key.json
 *.json
 
 .dlt/
+
+
+# Terraform files
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+terraform/terraform.tfvars
+.tfvars
