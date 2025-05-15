@@ -44,7 +44,6 @@ dbt/dbt_packages/
 keys/
 keys/credentials.json
 keys/dagster-sa-key.json
-*.json
 
 .dlt/
 
