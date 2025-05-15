@@ -22,6 +22,7 @@
     }
   },
   "containerEnv": {
-    "PYTHONPATH": "/workspaces/CamOnDagster"
+    "PYTHONPATH": "/workspaces/CamOnDagster",
+    "GOOGLE_APPLICATION_CREDENTIALS": "/workspaces/CamOnDagster/keys/dagster-sa-key.json"
   }
 }
