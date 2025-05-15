@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: openlibrary
+    database: camondagster
+    schema: openlibrary_data
+
+    tables:
+      - name: sql_books
+      - name: python_books
+      - name: data_warehousing_books
+      - name: data_engineering_books
+      - name: apache_airflow_books
