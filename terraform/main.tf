@@ -14,7 +14,7 @@ provider "google" {
 
 resource "google_bigquery_dataset" "dagster_dataset" {
   dataset_id                 = "dagster_data"
-  location                   = var.region
+  location                   = "australia-southeast1"
   friendly_name              = "Dagster Dataset"
   description                = "Dataset for Dagster pipelines"
   delete_contents_on_destroy = true

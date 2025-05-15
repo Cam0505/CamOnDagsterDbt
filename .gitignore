@@ -55,3 +55,8 @@ keys/dagster-sa-key.json
 .terraform.lock.hcl
 terraform/terraform.tfvars
 .tfvars
+terraform/terraform_commands.txt
+
+# Ignore all local terraform plans except committed *.tf files
+terraform/*.binary
+terraform/*.json
