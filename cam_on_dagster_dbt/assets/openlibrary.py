@@ -1,0 +1,169 @@
+from dagster import asset, OpExecutionContext
+import os
+import requests
+from dotenv import load_dotenv
+from pathlib import Path
+import dlt
+import time
+import subprocess
+from typing import Iterator, Dict
+import duckdb
+
+load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+
+
+BASE_URL = "https://openlibrary.org/search.json"
+
+# Define your search terms and topics
+SEARCH_TOPICS: dict[str, str] = {
+    "Python": "Python",
+    "Apache Airflow": "Apache Airflow",
+    "Data Engineering": "Data Engineering",
+    "Data Warehousing": "Data Warehousing",
+    "SQL": "SQL"
+
+}
+
+
+def fetch_books(term: str) -> Dict:
+    response = requests.get(BASE_URL, params={"q": term, "limit": 100})
+    response.raise_for_status()
+    return response.json()
+
+
+def create_resource(term: str, topic: str, context: OpExecutionContext):
+    resource_name = f"{term.lower().replace(' ', '_')}_books"
+
+    @dlt.resource(name=resource_name, write_disposition="merge", primary_key="key")
+    def resource_func() -> Iterator[Dict]:
+        term_state = dlt.current.source_state().setdefault(resource_name, {
+            "count": 0,
+            "last_run_status": None
+        })
+        db_path = os.getenv("DESTINATION__DUCKDB__CREDENTIALS")
+        if not db_path:
+            raise ValueError(
+                "Missing DESTINATION__DUCKDB__CREDENTIALS in environment.")
+        # Count filtered rows currently in DuckDB
+        con = duckdb.connect(database=db_path)
+        try:
+            table_name = f"openlibrary_data.{resource_name}"
+            try:
+                result = con.execute(
+                    f"SELECT COUNT(*) FROM {table_name}").fetchone()
+                current_table_count = result[0] if result else 0
+            except Exception:
+                current_table_count = 0  # Table might not exist
+        finally:
+            con.close()
+
+        data = fetch_books(term)
+
+        # Prepare filtered rows first
+        filtered_rows = []
+        for book in data["docs"]:
+            subject_list = book.get("subject", [])
+            subject_str = " ".join(
+                subject_list).lower() if subject_list else ""
+            title = book.get("title", "").lower()
+
+            if topic.lower() in title or topic.lower() in subject_str:
+                filtered_rows.append({
+                    "search_term": term,
+                    "topic_filter": topic,
+                    "title": book.get("title"),
+                    "author_name": ", ".join(book.get("author_name", [])),
+                    "publish_year": book.get("first_publish_year"),
+                    "isbn": ", ".join(book.get("isbn", [])) if book.get("isbn") else None,
+                    "edition_count": book.get("edition_count"),
+                    "key": book.get("key"),
+                    "subject_raw": subject_list,
+                    "subject_str": subject_str
+                })
+
+        filtered_count = len(filtered_rows)
+        previous_count = term_state["count"]
+
+        if current_table_count < previous_count:
+            context.log.info(
+                f"⚠️ Detected fewer rows in DuckDB table '{table_name}' ({current_table_count}) "
+                f"than previous filtered count ({previous_count}). Forcing reload."
+            )
+        elif filtered_count == previous_count:
+            context.log.info(
+                f"🔁 SKIPPED LOAD for {term}:\n"
+                f"📅 Previous filtered count: {previous_count}\n"
+                f"📦 Current filtered count: {filtered_count}\n"
+                f"⏳ No new data. Skipping..."
+            )
+            term_state["last_run_status"] = "skipped_no_new_data"
+            return
+
+        context.log.info(
+            f"✅ New filtered data for '{term}': {previous_count} ➝ {filtered_count}"
+        )
+        term_state["count"] = filtered_count
+        term_state["last_run_status"] = "loaded"
+
+        yield from filtered_rows
+
+    return resource_func
+
+
+@dlt.source
+def openlibrary_dim_source(context: OpExecutionContext):
+    for term, topic in SEARCH_TOPICS.items():
+        yield create_resource(term, topic, context)
+
+
+@asset(compute_kind="python")
+def openlibrary_books_asset(context: OpExecutionContext) -> bool:
+
+    context.log.info("Starting DLT pipeline...")
+    pipeline = dlt.pipeline(
+        pipeline_name="openlibrary_incremental",
+        destination="duckdb",
+        dataset_name="openlibrary_data"
+    )
+
+    source = openlibrary_dim_source(context)
+    try:
+        load_info = pipeline.run(source)
+        context.log.info(f"✅ Load Successful: {load_info}")
+        return bool(load_info)
+    except Exception as e:
+        context.log.error(f"❌ Pipeline run failed: {e}")
+        return False
+
+
+@asset(deps=["openlibrary_books_asset"])
+def dbt_openlibrary_data(context: OpExecutionContext, openlibrary_books_asset: bool) -> None:
+    """Runs the dbt command after loading the data from Geo API."""
+    if not openlibrary_books_asset:
+        context.log.warning(
+            "\n⚠️  WARNING: DBT SKIPPED\n"
+            "📉 No data was loaded from OpenLibrary API.\n"
+            "🚫 Skipping dbt run.\n"
+            "----------------------------------------"
+        )
+        return
+
+    DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
+    context.log.info(f"DBT Project Directory: {DBT_PROJECT_DIR}")
+
+    start = time.time()
+    try:
+        result = subprocess.run(
+            "dbt build --select source:openlibrary+",
+            shell=True,
+            cwd=DBT_PROJECT_DIR,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        duration = round(time.time() - start, 2)
+        context.log.info(f"dbt build completed in {duration}s")
+        context.log.info(result.stdout)
+    except subprocess.CalledProcessError as e:
+        context.log.error(f"dbt build failed:\n{e.stdout}\n{e.stderr}")
+        raise
