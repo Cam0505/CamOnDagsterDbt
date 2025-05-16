@@ -1,0 +1,22 @@
+version: 2
+models:
+- name: base_rm_locations
+  description: "{{ doc('base_rm_locations') }}"
+  columns:
+  - name: location_id
+    description: "{{ doc('location_id') }}"
+    data_tests:
+    - unique
+    - not_null
+  - name: location_name
+    description: "{{ doc('location_name') }}"
+  - name: location_type
+    description: "{{ doc('location_type') }}"
+  - name: location_dimension
+    description: "{{ doc('location_dimension') }}"
+  - name: location_url
+    description: "{{ doc('location_url') }}"
+  - name: location_created
+    description: "{{ doc('location_created') }}"
+  - name: location_dlt_id
+    description: "{{ doc('location_dlt_id') }}"

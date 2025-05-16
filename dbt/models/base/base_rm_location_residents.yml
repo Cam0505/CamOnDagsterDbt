@@ -1,0 +1,9 @@
+version: 2
+models:
+- name: base_rm_location_residents
+  description: "{{ doc('base_rm_location_residents') }}"
+  columns:
+  - name: location_dlt_id
+    description: "{{ doc('location_dlt_id') }}"
+  - name: character_id
+    description: "{{ doc('character_id') }}"

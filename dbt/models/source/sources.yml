@@ -1,8 +1,0 @@
-version: 2
-
-sources:
-  - name: gsheets
-    database: camondagster
-    schema: google_sheets_data
-    tables:
-      - name: gsheets_finance

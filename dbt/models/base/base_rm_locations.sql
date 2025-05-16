@@ -10,7 +10,8 @@
 -- YYYY-MM-DD | NAME     | [Add future changes here]
 -- ------------------------------------------------------------------------------
 
-SELECT id, name, type, dimension, url
-,created AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne' AS created
+SELECT id as location_id, name as location_name, type as location_type, 
+dimension as location_dimension, url as location_url
+,created AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Melbourne' AS location_created
 ,"_dlt_id" as location_dlt_id
 FROM {{ source("rick_and_morty", "location") }}
