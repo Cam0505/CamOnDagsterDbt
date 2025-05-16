@@ -31,7 +31,9 @@ jobs:
           dbt deps
 
       - name: Create DuckDB folder if missing
-        run: mkdir -p duckdb
+        run: |
+          cd dbt
+          mkdir -p duckdb
 
       - name: Generate dbt docs
         run: |
