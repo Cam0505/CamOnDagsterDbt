@@ -2,6 +2,11 @@ version: 2
 models:
 - name: base_rm_location_residents
   description: "{{ doc('base_rm_location_residents') }}"
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      combination_of_columns:
+      - location_dlt_id
+      - character_id
   columns:
   - name: location_dlt_id
     description: "{{ doc('location_dlt_id') }}"

@@ -2,6 +2,11 @@ version: 2
 models:
 - name: base_rm_episode_character
   description: "{{ doc('base_rm_episode_character') }}"
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      combination_of_columns:
+      - episode_dlt_id
+      - character_id
   columns:
   - name: episode_dlt_id
     description: "{{ doc('episode_dlt_id') }}"

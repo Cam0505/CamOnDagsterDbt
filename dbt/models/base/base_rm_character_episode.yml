@@ -5,8 +5,8 @@ models:
   data_tests:
   - dbt_utils.unique_combination_of_columns:
       combination_of_columns:
-      - ingredient_name
-      - meal_id
+      - character_dlt_id
+      - episode_id
   columns:
   - name: character_dlt_id
     description: "{{ doc('character_dlt_id') }}"
