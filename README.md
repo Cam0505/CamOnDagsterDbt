@@ -1,56 +1,74 @@
 # CamOnDagsterDbt
 
-A containerized data engineering project combining [Dagster](https://dagster.io/), [dbt](https://www.getdbt.com/), and [DLT](https://docs.dltHub.com/) to orchestrate, transform, and manage modern data workflows. It uses [DuckDB](https://duckdb.org/) as the local data warehouse backend.
+A containerized data engineering project combining [Dagster](https://dagster.io/), [dbt](https://www.getdbt.com/), and [DLT](https://docs.dltHub.com/) to orchestrate, transform, and manage modern data workflows. It uses [DuckDB](https://duckdb.org/) as the local data warehouse backend with plans to migrate to GCP [BigQuery](https://cloud.google.com/bigquery?hl=en) via [Terraform](https://developer.hashicorp.com/terraform) in the future.
 
 ## 🧱 Project Structure
 
 ```CamOnDagsterDbt/
-├── cam_on_dagster_dbt/ # Dagster jobs and assets
+├── cam_on_dagster_dbt/ # Dagster jobs, assets, schedules, sensors, and definitions
+│ ├── assets/ # All asset definitions grouped by data source
+│ ├── jobs/ # Dagster job definitions
+│ ├── schedules.py # Dagster schedules
+│ ├── sensors.py # Dagster sensors
+│ ├── definitions.py # Central Dagster Definitions object
+│ └── init.py # Package initializer
 ├── dbt/ # dbt models and configs
-│ ├── models/
-│ ├── macros/
-│ ├── dbt_project.yml
-│ └── profiles.yml # Local dbt profile (excluded from git)
+│ ├── models/ # dbt models
+│ ├── macros/ # Custom macros
+│ ├── dbt_project.yml # dbt project configuration
+│ └── profiles.yml # dbt profile (excluded from git)
+├── terraform/ # Infrastructure-as-code for GCP (planned)
+│ ├── main.tf # GCP resource definitions
+│ ├── outputs.tf # Outputs from Terraform resources
+│ ├── variables.tf # Input variables
+│ └── terraform.tfvars # Environment-specific values
 ├── .devcontainer/ # Dev container setup
-├── .github/workflows/ # GitHub Actions CI
-├── docker-compose.yml
-├── requirements.txt
-├── workspace.yaml
-├── dagster.yaml
-└── README.md```
+│ ├── docker-compose.yml
+│ ├── Dockerfile
+│ └── devcontainer.json
+├── .github/workflows/ # GitHub Actions CI workflows
+│ └── dagster_ci.yml
+├── docker-compose.yml # Main Docker Compose file
+├── requirements.txt # Python dependencies
+├── workspace.yaml # Dagster workspace configuration
+├── dagster.yaml # Dagster project configuration
+└── README.md # Project documentation```
 
 ## ⚙️ Stack
 
-- **Dagster** – Orchestration and job management
-- **dbt** – SQL-based transformation layer
-- **DLT** – Data ingestion from APIs to DuckDB
-- **DuckDB** – Lightweight, local OLAP database
-- **Docker** – Containerized local environment
-- **GitHub Actions** – CI pipeline to validate dbt builds
+### Technologies Used
 
----
+- **Dagster** for workflow orchestration and asset management  
+- **dbt** for data modeling and transformations  
+- **Data Load Tool (DLT)** for incremental pipeline automation  
+- **DuckDB** for local analytics database with SQL support  
+- **Great Expectations** for data testing and validation  
+- **Terraform** (planned) for managing cloud infrastructure as code  
+- **Google Cloud Platform** (planned migration target), specifically BigQuery for scalable data warehousing  
 
-This repo includes a basic GitHub Actions CI pipeline that:
+### Features
 
-Installs dbt
+- Multi-source data ingestion pipelines: Google Sheets, TheCocktailDB, OpenLibrary, Rick and Morty API  
+- Modular asset definitions and jobs for maintainability  
+- Configured schedules and sensors to automate pipeline runs  
+- Centralized definitions to easily manage asset and job dependencies  
+- Integration of Great Expectations for data quality validation  
+- Environment configurations prepared for local and containerized execution  
 
-Runs dbt build using a temporary DuckDB path  
+## Terraform and Cloud Migration Preparation
 
-Fails if any models or dependencies are missing
+While the current project runs primarily on DuckDB and local orchestration tools, the codebase and infrastructure are designed with future cloud migration in mind. The project structure already includes:
 
-⚠️ Note: Since the DuckDB file isn't stored in the repo, and no source tables are seeded in CI, only isolated models that don’t rely on source data will pass (Dim_Date).
+- Terraform configuration files (planned or partially implemented) to manage infrastructure as code for Google Cloud Platform (GCP).  
+- Access controls and service account management set up for seamless authentication with GCP services.  
+- BigQuery dataset preparation, with the dataset schema and permissions configured and ready for integration.  
 
+This preparation ensures a smooth transition from local DuckDB to a scalable, cloud-native data warehouse using BigQuery, enabling advanced analytics and enterprise-grade data operations. When fully implemented, Terraform will provision and manage GCP resources automatically, aligning infrastructure deployment with the project’s version-controlled codebase.
 
-🔐 Secrets
-CI uses the following GitHub secret:
+## Next Steps
 
-Secret Name	Purpose
-DBT_DUCKDB_PATH	Path to DuckDB file in CI workflow
+- Finalize Terraform scripts for automated GCP resource deployment  
+- Transition pipelines to run on BigQuery for scalable cloud analytics  
+- Enhance data quality checks with Great Expectations integration  
+- Expand pipeline coverage with additional APIs and datasets
 
-
-📝 Notes
-The .duckdb database file is ignored from git (.gitignore)
-
-profiles.yml is stored inside dbt/ and not committed for security
-
-This repo is meant for local development and experimentation
