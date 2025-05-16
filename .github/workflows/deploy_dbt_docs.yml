@@ -1,35 +1,39 @@
-name: Deploy dbt Docs to GitHub Pages
+name: Deploy dbt Docs (DuckDB)
 
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy-docs:
+  deploy-dbt-docs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: 3.11
 
-      - name: Install dbt + adapter
+      - name: Install dbt and DuckDB adapter
         run: |
-          pip install dbt-core dbt-duckdb
+          pip install dbt-duckdb
+
+      - name: Write dbt profiles.yml to file
+        run: |
+          mkdir -p ~/.dbt
+          echo "${{ secrets.DBT_PROFILES_YML }}" > ~/.dbt/profiles.yml
+
+      - name: Install dbt dependencies
+        run: |
+          cd dbt
+          dbt deps
+
+      - name: Create DuckDB folder if missing
+        run: mkdir -p dbt/duckdb
 
       - name: Generate dbt docs
         run: |
           cd dbt
-          dbt deps
-          dbt compile
           dbt docs generate
-
-      - name: Deploy docs to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dbt/target
