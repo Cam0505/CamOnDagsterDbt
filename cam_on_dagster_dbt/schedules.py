@@ -2,7 +2,7 @@
 To add a daily schedule that materializes your dbt assets, uncomment the following lines.
 """
 from dagster import ScheduleDefinition
-from .jobs.jobs import run_dbt_assets
+from .jobs.dbt_job import run_dbt_assets
 from cam_on_dagster_dbt.jobs.gsheets_job import gsheets_financial_with_dbt_job
 from cam_on_dagster_dbt.jobs.beverage_data_job import beverage_dim_job
 from cam_on_dagster_dbt.jobs.meals_data_job import meals_dim_job
