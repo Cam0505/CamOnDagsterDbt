@@ -5,14 +5,25 @@ models:
   columns:
   - name: character_id
     description: "{{ doc('character_id') }}"
+    data_tests:
+    - unique
+    - not_null
   - name: character_name
     description: "{{ doc('character_name') }}"
   - name: character_status
     description: "{{ doc('character_status') }}"
+    data_tests:
+    - accepted_values:
+        values: ['Alive', 'unknown', 'Dead']
+        quote: true
   - name: character_species
     description: "{{ doc('character_species') }}"
   - name: character_gender
     description: "{{ doc('character_gender') }}"
+    data_tests:
+    - accepted_values:
+        values: ['Genderless', 'Male', 'Female', 'unknown']
+        quote: true
   - name: character_origin
     description: "{{ doc('character_origin') }}"
   - name: character_first_location

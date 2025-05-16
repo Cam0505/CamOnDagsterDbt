@@ -2,21 +2,31 @@ version: 2
 models:
 - name: base_rm_locations
   description: "{{ doc('base_rm_locations') }}"
+  config:
+    contract:
+      enforced: true
   columns:
   - name: location_id
     description: "{{ doc('location_id') }}"
+    data_type: bigint
     data_tests:
     - unique
     - not_null
   - name: location_name
     description: "{{ doc('location_name') }}"
+    data_type: varchar
   - name: location_type
     description: "{{ doc('location_type') }}"
+    data_type: varchar
   - name: location_dimension
     description: "{{ doc('location_dimension') }}"
+    data_type: varchar
   - name: location_url
     description: "{{ doc('location_url') }}"
+    data_type: varchar
   - name: location_created
     description: "{{ doc('location_created') }}"
+    data_type: TIMESTAMP WITH TIME ZONE
   - name: location_dlt_id
     description: "{{ doc('location_dlt_id') }}"
+    data_type: varchar

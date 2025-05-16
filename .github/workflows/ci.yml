@@ -39,7 +39,7 @@ jobs:
         run: |
           mkdir -p ~/.dbt
           cat > ~/.dbt/profiles.yml <<EOF
-          CamOnDagster:
+          camondagster:
             outputs:
               dev:
                 type: duckdb
