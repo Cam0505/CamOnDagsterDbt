@@ -1,4 +1,9 @@
 
-target/
+target/compiled
+target/run
+target/catalog.json
+target/*.json
+target/partial_parse.msgpack
+target/graph.gpickle
 dbt_packages/
 logs/
