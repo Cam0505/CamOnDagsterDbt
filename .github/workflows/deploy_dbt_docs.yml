@@ -39,3 +39,12 @@ jobs:
         run: |
           cd dbt
           dbt docs generate
+        
+      - name: List generated docs files
+        run: ls -l dbt/target
+      
+      - name: Deploy docs to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dbt/target  # adjust this if your docs are somewhere else, often it's ./dbt/target or ./dbt/target/catalog or ./dbt/target/docs
