@@ -74,7 +74,7 @@ def meal_dim_source(context: OpExecutionContext):
         yield create_resource(table_name, param, value_key, context)
 
 
-@asset(compute_kind="python")
+@asset(compute_kind="python", group_name="Meals", tags={"source": "Meals"})
 def meals_dim_data(context) -> dict:
     """Loads beverage dimension tables if row counts differ from expected."""
     context.log.info("Starting DLT pipeline...")
@@ -187,7 +187,7 @@ def dimension_data_source(context: OpExecutionContext, values: dict):
         yield create_dimension_resource(table_name, config, values, context)
 
 
-@asset(compute_kind="python", deps=["meals_dim_data"])
+@asset(compute_kind="python", deps=["meals_dim_data"], group_name="Meals", tags={"source": "Meals"})
 def meals_dimension_data(context, meals_dim_data: dict) -> bool:
     if not meals_dim_data:
         context.log.warning(
@@ -215,7 +215,7 @@ def meals_dimension_data(context, meals_dim_data: dict) -> bool:
         return False
 
 
-@asset(compute_kind="python", deps=["meals_dimension_data"])
+@asset(compute_kind="python", deps=["meals_dimension_data"], group_name="Meals", tags={"source": "Meals"})
 def meals_fact_data(context, meals_dimension_data: bool) -> bool:
 
     @dlt.resource(name="consumption", write_disposition="append")
@@ -275,7 +275,7 @@ def meals_fact_data(context, meals_dimension_data: bool) -> bool:
         return True
 
 
-@asset(deps=["meals_fact_data"])
+@asset(deps=["meals_fact_data"], group_name="Meals", tags={"source": "Meals"})
 def dbt_meals_data(context: OpExecutionContext, meals_fact_data: bool) -> None:
     """Runs the dbt command after loading the data from Beverage API."""
     if not meals_fact_data:

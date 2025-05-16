@@ -2,7 +2,7 @@ from dagster import job
 from cam_on_dagster_dbt.assets.GeoAPI import get_geo_data, dbt_geo_data
 
 
-@job
+@job(tags={"source": "Geo"})
 def geo_data_job():
     # First, run the gsheet_finance_data asset
     Geo_Data_Present = get_geo_data()

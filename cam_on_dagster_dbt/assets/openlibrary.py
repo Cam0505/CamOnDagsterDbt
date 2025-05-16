@@ -116,7 +116,7 @@ def openlibrary_dim_source(context: OpExecutionContext):
         yield create_resource(term, topic, context)
 
 
-@asset(compute_kind="python")
+@asset(compute_kind="python", group_name="OpenLibrary", tags={"source": "OpenLibrary"})
 def openlibrary_books_asset(context: OpExecutionContext) -> bool:
 
     context.log.info("Starting DLT pipeline...")
@@ -136,7 +136,7 @@ def openlibrary_books_asset(context: OpExecutionContext) -> bool:
         return False
 
 
-@asset(deps=["openlibrary_books_asset"])
+@asset(deps=["openlibrary_books_asset"], group_name="OpenLibrary", tags={"source": "OpenLibrary"})
 def dbt_openlibrary_data(context: OpExecutionContext, openlibrary_books_asset: bool) -> None:
     """Runs the dbt command after loading the data from Geo API."""
     if not openlibrary_books_asset:

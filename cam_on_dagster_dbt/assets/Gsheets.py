@@ -117,7 +117,7 @@ def gsheet_finance_source(context: OpExecutionContext):
     return gsheet_finance_resource
 
 
-@asset(compute_kind="python")
+@asset(compute_kind="python", group_name="gSheets", tags={"source": "gSheets"})
 def gsheet_finance_data(context: OpExecutionContext) -> bool:
     if not is_within_asx_hours():
         context.log.info("Outside ASX trading hours - skipping")
@@ -153,7 +153,7 @@ def gsheet_finance_data(context: OpExecutionContext) -> bool:
         return False
 
 
-@asset(deps=["gsheet_finance_data"])
+@asset(deps=["gsheet_finance_data"], group_name="gSheets", tags={"source": "gSheets"})
 def gsheet_dbt_command(context: OpExecutionContext, gsheet_finance_data: bool) -> None:
     """Runs the dbt command after loading the data from Google Sheets."""
 

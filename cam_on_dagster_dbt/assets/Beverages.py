@@ -66,7 +66,7 @@ def beverage_source(context: OpExecutionContext):
         yield create_resource(table_name, param, value_key, context)
 
 
-@asset(compute_kind="python")
+@asset(compute_kind="python", group_name="Beverages", tags={"source": "Beverages"})
 def beverage_dim_data(context) -> dict:
     """Loads beverage dimension tables if row counts differ from expected."""
 
@@ -190,7 +190,7 @@ def dimension_data_source(context: OpExecutionContext, values: dict):
         yield create_dimension_resource(table_name, config, values, context)
 
 
-@asset(compute_kind="python", deps=["beverage_dim_data"])
+@asset(compute_kind="python", deps=["beverage_dim_data"], group_name="Beverages", tags={"source": "Beverages"})
 def dimension_data(context, beverage_dim_data: dict) -> bool:
 
     if not beverage_dim_data:
@@ -221,7 +221,7 @@ def dimension_data(context, beverage_dim_data: dict) -> bool:
         return False
 
 
-@asset(compute_kind="python", deps=["dimension_data"])
+@asset(compute_kind="python", deps=["dimension_data"], group_name="Beverages", tags={"source": "Beverages"})
 def beverage_fact_data(context, dimension_data: bool) -> bool:
     if not dimension_data:
         context.log.warning(
@@ -284,7 +284,7 @@ def beverage_fact_data(context, dimension_data: bool) -> bool:
         raise
 
 
-@asset(deps=["beverage_fact_data"])
+@asset(deps=["beverage_fact_data"], group_name="Beverages", tags={"source": "Beverages"})
 def dbt_beverage_data(context: OpExecutionContext, beverage_fact_data: bool):
     """Runs the dbt command after loading the data from Beverage API."""
     if not beverage_fact_data:
