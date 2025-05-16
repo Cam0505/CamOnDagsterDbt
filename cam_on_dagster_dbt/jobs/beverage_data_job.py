@@ -2,7 +2,7 @@ from dagster import job
 from cam_on_dagster_dbt.assets.Beverages import beverage_dim_data, dimension_data, beverage_fact_data, dbt_beverage_data
 
 
-@job
+@job(tags={"source": "Beverages"})
 def beverage_dim_job():
     # First, run the gsheet_finance_data asset
     beverage_dim_values = beverage_dim_data()

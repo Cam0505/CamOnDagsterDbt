@@ -2,7 +2,7 @@ from dagster import job
 from cam_on_dagster_dbt.assets.Meals import meals_dim_data, meals_dimension_data, meals_fact_data, dbt_meals_data
 
 
-@job
+@job(tags={"source": "Meals"})
 def meals_dim_job():
     # First, run the gsheet_finance_data asset
     categories_loaded = meals_dim_data()

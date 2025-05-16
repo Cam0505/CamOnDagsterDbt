@@ -132,7 +132,7 @@ def geo_source(context: OpExecutionContext):
     return cities
 
 
-@asset(compute_kind="python")
+@asset(compute_kind="python", group_name="Geo", tags={"source": "Geo"})
 def get_geo_data(context: OpExecutionContext) -> bool:
     try:
         context.log.info("Starting DLT pipeline...")
@@ -163,7 +163,7 @@ def get_geo_data(context: OpExecutionContext) -> bool:
         return False
 
 
-@asset(deps=["get_geo_data"])
+@asset(deps=["get_geo_data"], group_name="Geo", tags={"source": "Geo"})
 def dbt_geo_data(context: OpExecutionContext, get_geo_data: bool) -> None:
     """Runs the dbt command after loading the data from Geo API."""
     if not get_geo_data:
