@@ -57,7 +57,7 @@ CamOnDagsterDbt/
 
 - 🛠️ Terraform (planned) for managing cloud infrastructure as code
 
-- ☁️ Google Cloud Platform (planned), with BigQuery for scalable data warehousing warehousing 
+- ☁️ Google Cloud Platform (planned), with BigQuery for scalable data warehousing
 
 ### Features
 
