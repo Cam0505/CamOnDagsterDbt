@@ -1,0 +1,19 @@
+version: 2
+models:
+- name: base_rm_episodes
+  description: "{{ doc('base_rm_episodes') }}"
+  columns:
+  - name: episode_id
+    description: "{{ doc('episode_id') }}"
+  - name: episode_name
+    description: "{{ doc('episode_name') }}"
+  - name: episode_air_date
+    description: "{{ doc('episode_air_date') }}"
+  - name: episode
+    description: "{{ doc('episode') }}"
+  - name: episode_url
+    description: "{{ doc('episode_url') }}"
+  - name: episode_created
+    description: "{{ doc('episode_created') }}"
+  - name: episode_dlt_id
+    description: "{{ doc('episode_dlt_id') }}"
