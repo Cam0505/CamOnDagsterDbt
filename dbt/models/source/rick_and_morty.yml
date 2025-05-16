@@ -1,0 +1,11 @@
+sources:
+  - name: rick_and_morty
+    database: camondagster
+    schema: rick_and_morty_data
+    tables:
+      - name: character
+      - name: character__episode
+      - name: episode
+      - name: episode__characters
+      - name: location
+      - name: location__residents

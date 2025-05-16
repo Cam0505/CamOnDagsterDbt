@@ -9,3 +9,4 @@ from .Beverages import beverage_dim_data, dimension_data, beverage_fact_data, db
 from .Meals import meals_dim_data, meals_dimension_data, meals_fact_data, dbt_meals_data
 from .GeoAPI import get_geo_data, dbt_geo_data
 from .openlibrary import openlibrary_books_asset, dbt_openlibrary_data
+from .rick_and_morty import rick_and_morty_asset, dbt_rick_and_morty_data
