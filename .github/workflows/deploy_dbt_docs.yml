@@ -1,11 +1,11 @@
 name: Deploy dbt Docs (DuckDB)
 
-permissions:
-  contents: write
-
 on:
   push:
     branches: [main]
+
+permissions:
+  contents: write
 
 jobs:
   deploy-dbt-docs:
