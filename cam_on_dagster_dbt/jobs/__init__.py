@@ -4,3 +4,14 @@ from .meals_data_job import meals_dim_job
 from .geo_api_job import geo_data_job
 from .openlibrary_job import openlibrary_job
 from .rick_and_morty_job import RickandMorty_job
+from .dbt_job import run_dbt_assets
+
+__all__ = [
+    "gsheets_financial_with_dbt_job",
+    "beverage_dim_job",
+    "meals_dim_job",
+    "geo_data_job",
+    "openlibrary_job",
+    "RickandMorty_job",
+    "run_dbt_assets",
+]

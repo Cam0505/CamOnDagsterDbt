@@ -1,11 +1,64 @@
-# __init__.py
-
-# Initialize the Dagster project package and expose key components
-
-from .assets.dbt_assets import camon_dbt_assets
-from .jobs.gsheets_job import gsheets_financial_with_dbt_job
-from .assets.Gsheets import gsheet_finance_data, gsheet_dbt_command
-from .jobs.jobs import run_dbt_assets
+from .assets import (
+    camon_dbt_assets,
+    gsheet_finance_data,
+    gsheet_dbt_command,
+    get_geo_data,
+    dbt_geo_data,
+    openlibrary_books_asset,
+    dbt_openlibrary_data,
+    rick_and_morty_asset,
+    dbt_rick_and_morty_data,
+    meals_dim_data,
+    meals_dimension_data,
+    meals_fact_data,
+    dbt_meals_data,
+    beverage_dim_data,
+    dimension_data,
+    beverage_fact_data,
+    dbt_beverage_data,
+)
+from .jobs import (
+    gsheets_financial_with_dbt_job,
+    beverage_dim_job,
+    meals_dim_job,
+    geo_data_job,
+    openlibrary_job,
+    RickandMorty_job,
+    run_dbt_assets,
+)
 from .schedules import schedules
 from .sensors import camon_sensor
 from .definitions import defs
+
+__all__ = [
+    # Assets
+    "camon_dbt_assets",
+    "gsheet_finance_data",
+    "gsheet_dbt_command",
+    "get_geo_data",
+    "dbt_geo_data",
+    "openlibrary_books_asset",
+    "dbt_openlibrary_data",
+    "rick_and_morty_asset",
+    "dbt_rick_and_morty_data",
+    "meals_dim_data",
+    "meals_dimension_data",
+    "meals_fact_data",
+    "dbt_meals_data",
+    "beverage_dim_data",
+    "dimension_data",
+    "beverage_fact_data",
+    "dbt_beverage_data",
+    # Jobs
+    "gsheets_financial_with_dbt_job",
+    "beverage_dim_job",
+    "meals_dim_job",
+    "geo_data_job",
+    "openlibrary_job",
+    "RickandMorty_job",
+    "run_dbt_assets",
+    # Others
+    "schedules",
+    "camon_sensor",
+    "defs",
+]
