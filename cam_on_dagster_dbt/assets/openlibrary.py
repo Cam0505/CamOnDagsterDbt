@@ -15,28 +15,32 @@ load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
 BASE_URL = "https://openlibrary.org/search.json"
 
 # Define your search terms and topics
-SEARCH_TOPICS: dict[str, str] = {
-    "Python": "Python",
-    "Apache Airflow": "Apache Airflow",
-    "Data Engineering": "Data Engineering",
-    "Data Warehousing": "Data Warehousing",
-    "SQL": "SQL"
+SEARCH_TOPICS: dict[str, list[str]] = {
+    "Python": ["Python", "python_books"],
+    "Apache Airflow": ["Apache Airflow", "apache_airflow_books"],
+    "Data Engineering": ["Data Engineering", "data_engineering_books"],
+    "Data Warehousing": ["Data Warehousing", "data_warehousing_books"],
+    "SQL": ["SQL", "sql_books"]
 
 }
 
 
 def fetch_books(term: str) -> Dict:
-    response = requests.get(BASE_URL, params={"q": term, "limit": 100})
-    response.raise_for_status()
-    return response.json()
+    try:
+        response = requests.get(
+            BASE_URL, params={"q": term, "limit": 100}, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        raise RuntimeError(
+            f"Failed to fetch books for term '{term}': {e}") from e
 
 
-def create_resource(term: str, topic: str, context: OpExecutionContext):
-    resource_name = f"{term.lower().replace(' ', '_')}_books"
+def create_resource(term: str, topic: str, resource_name: str, context: OpExecutionContext):
 
     @dlt.resource(name=resource_name, write_disposition="merge", primary_key="key")
     def resource_func() -> Iterator[Dict]:
-        term_state = dlt.current.source_state().setdefault(resource_name, {
+        state = dlt.current.source_state().setdefault(resource_name, {
             "count": 0,
             "last_run_status": None
         })
@@ -45,19 +49,31 @@ def create_resource(term: str, topic: str, context: OpExecutionContext):
             raise ValueError(
                 "Missing DESTINATION__DUCKDB__CREDENTIALS in environment.")
         # Count filtered rows currently in DuckDB
-        con = duckdb.connect(database=db_path)
+
+        current_table_count = 0
         try:
-            table_name = f"openlibrary_data.{resource_name}"
+            con = duckdb.connect(database=db_path)
             try:
+                table_name = f"openlibrary_data.{resource_name}"
                 result = con.execute(
                     f"SELECT COUNT(*) FROM {table_name}").fetchone()
                 current_table_count = result[0] if result else 0
-            except Exception:
-                current_table_count = 0  # Table might not exist
-        finally:
-            con.close()
+            except Exception as e:
+                context.log.warning(
+                    f"Table {table_name} doesn't exist yet or error reading it: {e}")
+            finally:
+                con.close()
+        except Exception as e:
+            context.log.error(f"❌ Failed to connect to DuckDB: {e}")
+            state["last_run_status"] = "failed"
+            return
 
-        data = fetch_books(term)
+        try:
+            data = fetch_books(term)
+        except Exception as e:
+            context.log.error(f"❌ Fetch failed for '{term}': {e}")
+            state["last_run_status"] = "failed"
+            return
 
         # Prepare filtered rows first
         filtered_rows = []
@@ -82,7 +98,7 @@ def create_resource(term: str, topic: str, context: OpExecutionContext):
                 })
 
         filtered_count = len(filtered_rows)
-        previous_count = term_state["count"]
+        previous_count = state["count"]
 
         if current_table_count < previous_count:
             context.log.info(
@@ -96,24 +112,28 @@ def create_resource(term: str, topic: str, context: OpExecutionContext):
                 f"📦 Current filtered count: {filtered_count}\n"
                 f"⏳ No new data. Skipping..."
             )
-            term_state["last_run_status"] = "skipped_no_new_data"
+            state["last_run_status"] = "skipped_no_new_data"
             return
 
         context.log.info(
             f"✅ New filtered data for '{term}': {previous_count} ➝ {filtered_count}"
         )
-        term_state["count"] = filtered_count
-        term_state["last_run_status"] = "loaded"
+        state["count"] = filtered_count
+        state["last_run_status"] = "success"
 
-        yield from filtered_rows
+        try:
+            yield from filtered_rows
+        except Exception as e:
+            context.log.error(f"❌ Failed to yield data for {term}: {e}")
+            state["last_run_status"] = "failed"
 
     return resource_func
 
 
 @dlt.source
 def openlibrary_dim_source(context: OpExecutionContext):
-    for term, topic in SEARCH_TOPICS.items():
-        yield create_resource(term, topic, context)
+    for term, (topic, resource_name) in SEARCH_TOPICS.items():
+        yield create_resource(term, topic, resource_name, context)
 
 
 @asset(compute_kind="python", group_name="OpenLibrary", tags={"source": "OpenLibrary"})
@@ -127,10 +147,27 @@ def openlibrary_books_asset(context: OpExecutionContext) -> bool:
     )
 
     source = openlibrary_dim_source(context)
+
     try:
         load_info = pipeline.run(source)
-        context.log.info(f"✅ Load Successful: {load_info}")
+
+        statuses = [source.state.get(resource, {}).get(
+            "last_run_status") for (junk, resource) in SEARCH_TOPICS.values()]
+
+        if all(s == "skipped_no_new_data" for s in statuses):
+            context.log.info(
+                "⏭️ All resources skipped or failed — no data loaded.")
+            return False
+        elif all(s == "failed" for s in statuses):
+            context.log.error(
+                "💥 All resources failed to load — check API or network.")
+            return False
+
+        loaded_count = sum(1 for s in statuses if s == "success")
+        context.log.info(f"✅ Number of resources loaded: {loaded_count}")
+
         return bool(load_info)
+
     except Exception as e:
         context.log.error(f"❌ Pipeline run failed: {e}")
         return False
