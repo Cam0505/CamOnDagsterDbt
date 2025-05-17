@@ -1,0 +1,27 @@
+version: 2
+models:
+- name: staging_rm_characters
+  description: ''
+  columns:
+  - name: character_id
+    description: "{{ doc('character_id') }}"
+  - name: character_name
+    description: "{{ doc('character_name') }}"
+  - name: character_group
+    description: "{{ doc('character_group') }}"
+  - name: character_status
+    description: "{{ doc('character_status') }}"
+  - name: character_species
+    description: "{{ doc('character_species') }}"
+  - name: character_gender
+    description: "{{ doc('character_gender') }}"
+  - name: character_origin
+    description: "{{ doc('character_origin') }}"
+  - name: character_image
+    description: "{{ doc('character_image') }}"
+  - name: character_created
+    description: "{{ doc('character_created') }}"
+  - name: character_dlt_id
+    description: "{{ doc('character_dlt_id') }}"
+  - name: Num_Episodes
+    description: ''

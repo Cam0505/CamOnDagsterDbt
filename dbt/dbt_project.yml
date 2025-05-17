@@ -2,7 +2,7 @@
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
-name: 'CamOnDagster'
+name: 'camondagster'
 version: '1.0.0'
 
 # This setting configures which "profile" dbt uses for this project.
@@ -30,7 +30,7 @@ clean-targets:         # directories to be removed by `dbt clean`
 # directory as views. These settings can be overridden in the individual model
 # files using the `{{ config(...) }}` macro.
 models:
-  CamOnDagster:
+  camondagster:
     base:
         # +required_tests: {"unique.*|not_null": 1}
       +schema: base
@@ -43,6 +43,6 @@ models:
       +schema: common
       +materialized: table
 snapshots:
-  CamOnDagster:
+  camondagster:
     +path: snapshots
     +tags: snapshot_dependencies
