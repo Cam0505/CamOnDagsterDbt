@@ -1,0 +1,23 @@
+version: 2
+models:
+- name: staging_rm_episodes
+  description: ''
+  columns:
+  - name: episode_id
+    description: "{{ doc('episode_id') }}"
+  - name: episode_name
+    description: "{{ doc('episode_name') }}"
+  - name: episode_group
+    description: "{{ doc('episode_group') }}"
+  - name: episode_air_date
+    description: "{{ doc('episode_air_date') }}"
+  - name: episode
+    description: "{{ doc('episode') }}"
+  - name: season_num
+    description: "{{ doc('season_num') }}"
+  - name: episode_num
+    description: "{{ doc('episode_num') }}"
+  - name: episode_dlt_id
+    description: "{{ doc('episode_dlt_id') }}"
+  - name: Num_Characters
+    description: ''

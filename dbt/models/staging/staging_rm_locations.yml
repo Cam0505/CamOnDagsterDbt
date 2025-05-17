@@ -1,0 +1,23 @@
+version: 2
+models:
+- name: staging_rm_locations
+  description: ''
+  columns:
+  - name: location_id
+    description: "{{ doc('location_id') }}"
+  - name: location_name
+    description: "{{ doc('location_name') }}"
+  - name: location_type
+    description: "{{ doc('location_type') }}"
+  - name: location_categories
+    description: "{{ doc('location_categories') }}"
+  - name: location_dimension
+    description: "{{ doc('location_dimension') }}"
+  - name: dimension_group
+    description: "{{ doc('dimension_group') }}"
+  - name: location_created
+    description: "{{ doc('location_created') }}"
+  - name: location_dlt_id
+    description: "{{ doc('location_dlt_id') }}"
+  - name: Num_Characters
+    description: ''
