@@ -6,20 +6,43 @@ from pathlib import Path
 import dlt
 import time
 import subprocess
+import duckdb
+import json
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+COUNTRIES = ["AU", "NZ", "GB", "CA"]
+
+
+def get_existing_count(country_code: str, context) -> int:
+    db_path = os.getenv("DESTINATION__DUCKDB__CREDENTIALS")
+    if not db_path:
+        raise ValueError(
+            "Missing DESTINATION__DUCKDB__CREDENTIALS in environment.")
+
+    con = duckdb.connect(database=db_path)
+    try:
+        result = con.execute(
+            "SELECT COUNT(*) FROM geo_data.geo_cities WHERE country_code = ?",
+            [country_code]).fetchone()
+        return result[0] if result else 0
+    except Exception as e:
+        context.log.warn(f"Failed to get row count for geo_cities: {e}")
+        return 0  # Table might not exist yet
+    finally:
+        con.close()
 
 
 @dlt.source
 def geo_source(context: OpExecutionContext):
-    @dlt.resource(name="geo_cities", write_disposition="replace")
+    @dlt.resource(name="geo_cities", write_disposition="merge", primary_key="city_id")
     def cities():
         # Initialize state at the start of each run
         state = dlt.current.source_state().setdefault("geo_cities", {
             "processed_records": {},
-            "last_run_status": None
+            "country_status": {}
         })
-        context.log.info(f"Current state at the beginning of the run: {state}")
+
+        # context.log.info(f"Current state at the beginning of the run: {state}")
 
         # API credentials and URL for GeoNames
         USERNAME = os.getenv("GEONAMES_USERNAME")
@@ -77,20 +100,36 @@ def geo_source(context: OpExecutionContext):
 
             if country_code in bboxes:
                 params.update(bboxes[country_code])
-
-            cities_data = make_request_with_retries(
-                BASE_URL, params).get("geonames", [])
+            try:
+                cities_data = make_request_with_retries(
+                    BASE_URL, params).get("geonames", [])
+            except Exception as e:
+                context.log.error(
+                    f"Failed to fetch cities for {country_code}: {e}")
+                state["country_status"][country_code] = "failed"
+                raise
+            try:
+                database_rowcount = get_existing_count(country_code, context)
+            except Exception as e:
+                context.log.error(f"Failed to connect for {country_code}: {e}")
+                state["country_status"][country_code] = "database_error"
+                raise
 
             current_count = len(cities_data)
+
             previous_count = state["processed_records"].get(country_code, 0)
 
-            if (current_count == previous_count) or state["last_run_status"] == "failed":
+            if database_rowcount < previous_count:
+                context.log.info(
+                    f"⚠️ GeoAPI data for `{country_code}` row count dropped from {previous_count} to {database_rowcount}. Forcing reload.")
+                state["country_status"][country_code] = "database_row_count"
+            elif (current_count == previous_count):
                 context.log.info(f"\n🔁 SKIPPED LOAD:\n"
                                  f"📅 Previous Run for {country_code}: {previous_count}\n"
                                  f"📦 API Cities for {country_code}: {current_count}\n"
                                  f"⏳ No new data for {country_code}. Skipping... \n"
                                  f"{'-'*45}")
-                state["last_run_status"] = "skipped_no_new_data"
+                state["country_status"][country_code] = "skipped_no_new_data"
                 return
 
             for city in cities_data:
@@ -111,22 +150,20 @@ def geo_source(context: OpExecutionContext):
 
             # Update the state with the number of records processed in this run
             state["processed_records"][country_code] = total_fetched
+            state["country_status"][country_code] = "success"
             context.log.info(
                 f"Total cities fetched for {country_code}: {total_fetched}")
 
         try:
-            for country in ["AU", "NZ", "GB", "CA"]:
+            for country in COUNTRIES:
                 try:
                     yield from fetch_cities(country)
                 except Exception as e:
-                    state["last_run_status"] = f"failed"
                     context.log.error(
                         f"Error while processing country {country}: {e}")
                     raise
-            state["last_run_status"] = "success"
             context.log.info(f"Current state after successful run: {state}")
         except Exception as e:
-            state["last_run_status"] = f"failed"
             context.log.error(f"Processing failed: {e}")
             raise
     return cities
@@ -134,38 +171,45 @@ def geo_source(context: OpExecutionContext):
 
 @asset(compute_kind="python", group_name="Geo", tags={"source": "Geo"})
 def get_geo_data(context: OpExecutionContext) -> bool:
+
+    context.log.info("Starting DLT pipeline...")
+    pipeline = dlt.pipeline(
+        pipeline_name="geo_cities_pipeline",
+        destination="duckdb",
+        dataset_name="geo_data",
+        dev_mode=False
+    )
+
+    source = geo_source(context)
     try:
-        context.log.info("Starting DLT pipeline...")
-        pipeline = dlt.pipeline(
-            pipeline_name="geo_cities_pipeline",
-            destination="duckdb",
-            dataset_name="geo_data",
-            dev_mode=False
-        )
+        load_info = pipeline.run(source)
 
-        source = geo_source(context)
-        data_loaded = False
+        outcome_data = source.state.get('geo_cities', {}).get("country_status")
 
-        for _ in source.geo_cities():
-            context.log.info("Data is available to load.")
-            data_loaded = True
-            break
-        if not data_loaded:
-            context.log.info("No new data to load - skipping DBT run")
+        context.log.info("Country Status:\n" +
+                         json.dumps(outcome_data, indent=2))
+
+        statuses = [outcome_data.get(resource, 0) for resource in COUNTRIES]
+
+        if any(s == "success" for s in statuses):
+            context.log.info(f"Pipeline Load Info: {load_info}")
+            return True
+        elif all(s == "skipped_no_new_data" for s in statuses):
+            return False
+        else:
+            context.log.error(
+                "💥  Pipeline Failures — check Logic, API or network.")
             return False
 
-        load_info = pipeline.run(source)
-        context.log.info(f"Pipeline finished. Load info: {load_info}")
-        return True
-
     except Exception as e:
-        context.log.exception(f"Pipeline failed: {e}")
+        context.log.error(f"❌ Pipeline run failed: {e}")
         return False
 
 
 @asset(deps=["get_geo_data"], group_name="Geo", tags={"source": "Geo"})
 def dbt_geo_data(context: OpExecutionContext, get_geo_data: bool) -> None:
     """Runs the dbt command after loading the data from Geo API."""
+
     if not get_geo_data:
         context.log.warning(
             "\n⚠️  WARNING: DBT SKIPPED\n"
