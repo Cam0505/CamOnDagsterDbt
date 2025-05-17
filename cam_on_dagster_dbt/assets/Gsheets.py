@@ -102,7 +102,7 @@ def gsheet_finance_source(context: OpExecutionContext):
                 "latest_ts": latest_gsheet_ts.isoformat(),
                 "last_run": datetime.now(ZoneInfo("UTC")).isoformat(),
                 "processed_records": len(df),
-                "last_run_status": "loaded"
+                "last_run_status": "success"
             })
 
             context.log.info(f"Loading {len(df)} new records")
@@ -123,33 +123,32 @@ def gsheet_finance_data(context: OpExecutionContext) -> bool:
     #     context.log.info("Outside ASX trading hours - skipping")
     #     return False
 
+    pipeline = dlt.pipeline(
+        pipeline_name="gsheets_to_duckdb",
+        destination=os.getenv("DLT_DESTINATION", "duckdb"),
+        dataset_name="google_sheets_data", dev_mode=False
+    )
+
+    # Get the source
+    source = gsheet_finance_source(context)
     try:
-        pipeline = dlt.pipeline(
-            pipeline_name="gsheets_to_duckdb",
-            destination="duckdb",
-            dataset_name="google_sheets_data", dev_mode=False
-        )
-
-        # Get the source
-        source = gsheet_finance_source(context)
-
-        # Check if there's actually data to load
-        data_loaded = False
-        for _ in source.gsheets_finance():
-            data_loaded = True
-            break  # Just check if there's at least one record
-
-        if not data_loaded:
-            context.log.info("No new data to load - skipping DBT run")
-            return False
-
-        # Only run the full pipeline if there's data
         load_info = pipeline.run(source)
-        context.log.info(f"Load result: {load_info}")
-        return True
 
+        status = source.state.get(
+            'gsheet_finance', {}).get('last_run_status', '')
+
+        if status == 'skipped_no_new_data':
+            context.log.info(f"\n⏭️ resource skipped — no data loaded.")
+            return False
+        elif status == 'success':
+            context.log.info(f"\n✅ Resource loaded: {load_info}")
+            return True
+        else:
+            context.log.error(
+                f"\n💥 All resources failed to load: {status}")
+            return False
     except Exception as e:
-        context.log.error(f"Pipeline failed: {e}")
+        context.log.error(f"\n❌ Pipeline run failed: {e}")
         return False
 
 
