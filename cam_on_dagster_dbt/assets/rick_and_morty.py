@@ -26,25 +26,36 @@ def paginate_all(endpoint: str) -> list[Dict[str, Any]]:
     results = []
     url = f"{BASE_URL}/{endpoint}"
     while url:
-        resp = requests.get(url)
-        resp.raise_for_status()
+        for _ in range(3):
+            try:
+                resp = requests.get(url)
+                resp.raise_for_status()
+                break
+            except requests.RequestException as e:
+                time.sleep(2)
+        else:
+            raise RuntimeError(f"Failed to fetch page: {url}")
         data = resp.json()
         results.extend(data.get("results", []))
         url = data.get("info", {}).get("next")
     return results
 
 
-def get_existing_count(table_name: str) -> int:
+def get_existing_count(table_name: str, context) -> int:
     db_path = os.getenv("DESTINATION__DUCKDB__CREDENTIALS")
     if not db_path:
         raise ValueError(
             "Missing DESTINATION__DUCKDB__CREDENTIALS in environment.")
+    if table_name not in RESOURCE_CONFIG.keys():
+        raise ValueError("Unauthorized access attempt.")
+
     con = duckdb.connect(database=db_path)
     try:
         result = con.execute(
             f"SELECT COUNT(*) FROM rick_and_morty_data.{table_name}").fetchone()
         return result[0] if result else 0
-    except Exception:
+    except Exception as e:
+        context.log.warn(f"Failed to get row count for `{table_name}`: {e}")
         return 0  # Table might not exist yet
     finally:
         con.close()
@@ -60,9 +71,19 @@ def make_resource(endpoint: str, primary_key: str):
             "last_run_status": None
         })
 
-        existing_count = get_existing_count(table_name)
-        data = paginate_all(endpoint)
-        new_count = len(data)
+        existing_count = get_existing_count(table_name, context)
+
+        # Only fetch first page to check count
+        try:
+            first_page = requests.get(f"{BASE_URL}/{endpoint}")
+            first_page.raise_for_status()
+            info = first_page.json().get("info", {})
+            new_count = info.get("count", 0)
+        except Exception as e:
+            context.log.error(
+                f"❌ Failed to fetch API count for `{table_name}`: {e}")
+            state["last_run_status"] = "failed"
+            raise
 
         if existing_count < state["count"]:
             context.log.info(
@@ -74,8 +95,10 @@ def make_resource(endpoint: str, primary_key: str):
 
         context.log.info(
             f"✅ New data for `{table_name}`: {state['count']} ➝ {new_count}")
+
+        data = paginate_all(endpoint)
         state["count"] = new_count
-        state["last_run_status"] = "loaded"
+        state["last_run_status"] = "success"
         yield from data
 
     return _resource
@@ -91,16 +114,32 @@ def rick_and_morty_source(context: OpExecutionContext):
 def rick_and_morty_asset(context: OpExecutionContext) -> bool:
     """Loads characters, episodes, and locations from Rick and Morty API using DLT."""
     context.log.info("🚀 Starting DLT pipeline for Rick and Morty API")
+
     pipeline = dlt.pipeline(
         pipeline_name="rick_and_morty_pipeline",
-        destination="duckdb",
+        destination=os.getenv("DLT_DESTINATION", "duckdb"),
         dataset_name="rick_and_morty_data"
     )
 
     source = rick_and_morty_source(context)
     try:
         load_info = pipeline.run(source)
-        context.log.info(f"✅ Load Successful: {load_info}")
+
+        statuses = [source.state.get(resource, {}).get(
+            "last_run_status") for resource in RESOURCE_CONFIG.keys()]
+
+        if all(s == "skipped_no_new_data" for s in statuses):
+            context.log.info(
+                "⏭️ All resources skipped — no data loaded.")
+            return False
+        elif all(s == "failed" for s in statuses):
+            context.log.error(
+                "💥 All resources failed to load — check API or network.")
+            return False
+
+        loaded_count = sum(1 for s in statuses if s == "success")
+        context.log.info(f"✅ Number of resources loaded: {loaded_count}")
+
         return bool(load_info)
     except Exception as e:
         context.log.error(f"❌ Pipeline run failed: {e}")
@@ -110,6 +149,7 @@ def rick_and_morty_asset(context: OpExecutionContext) -> bool:
 @asset(deps=["rick_and_morty_asset"], group_name="RickAndMorty", tags={"source": "RickAndMorty"})
 def dbt_rick_and_morty_data(context: OpExecutionContext, rick_and_morty_asset: bool) -> None:
     """Runs dbt models for Rick and Morty API after loading data."""
+
     if not rick_and_morty_asset:
         context.log.warning(
             "\n⚠️  WARNING: DBT SKIPPED\n"
