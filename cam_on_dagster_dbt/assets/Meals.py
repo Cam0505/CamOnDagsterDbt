@@ -9,6 +9,11 @@ import subprocess
 
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+TABLE_PARAMS = {
+    "category": ["c=list", "strCategory"],
+    "country": ["a=list", "strArea"],
+    "ingredients": ["i=list", "strIngredient"]
+}
 
 
 def create_resource(table_name, param, value_key, context):
@@ -36,7 +41,7 @@ def create_resource(table_name, param, value_key, context):
             current_value = len(current_list)
             previous_value = state.get("processed_records")
 
-            if (current_value == previous_value) or state["last_run_status"] == "failed":
+            if (current_value == previous_value):
                 context.log.info(
                     f"🔁 SKIPPED LOAD for {table_name}:\n"
                     f"📅 Previous: {previous_value}\n"
@@ -65,11 +70,7 @@ def create_resource(table_name, param, value_key, context):
 
 @dlt.source
 def meal_dim_source(context: OpExecutionContext):
-    TABLE_PARAMS = {
-        "category": ["c=list", "strCategory"],
-        "country": ["a=list", "strArea"],
-        "ingredients": ["i=list", "strIngredient"]
-    }
+
     for table_name, (param, value_key) in TABLE_PARAMS.items():
         yield create_resource(table_name, param, value_key, context)
 
@@ -85,24 +86,16 @@ def meals_dim_data(context) -> dict:
         dev_mode=False,
     )
     source = meal_dim_source(context)
-    all_values = {}
-    for res in source.resources.values():
-        try:
-            for item in res():
-                if isinstance(item, dict):
-                    for k, v in item.items():
-                        if k not in all_values:
-                            all_values[k] = []
-                        if v not in all_values[k]:  # optional: avoid duplicates
-                            # context.log.info(f"Adding value to all_values:{k}: {v}")
-                            all_values[k].append(v)
-        except Exception as e:
-            context.log.error(
-                f"Error processing resource {res.name}: {e}", exc_info=True)
-            continue
     context.log.info("Running pipeline...")
     load_info = pipeline.run(source)
     context.log.info(f"Pipeline finished. Load info: {load_info}")
+    all_values = {}
+
+    for table in TABLE_PARAMS.keys():
+        if table in source.state:
+            all_values[table] = source.state[table]["values"]
+        else:
+            context.log.warn(f"Table '{table}' not found in source.state")
 
     return all_values
 
@@ -110,7 +103,7 @@ def meals_dim_data(context) -> dict:
 def create_dimension_resource(table_name, config, values, context):
     @dlt.resource(name=config["resource_name"], write_disposition="replace")
     def resource_func():
-        categories = values.get(config["sql_column"], [])
+        categories = values.get(table_name, [])
         state = dlt.current.source_state().setdefault(config["resource_name"], {
             "processed_records": 0,
             "last_run_status": None
