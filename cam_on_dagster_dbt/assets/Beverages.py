@@ -8,6 +8,12 @@ import time
 import subprocess
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+TABLE_PARAMS = {
+    "beverages": ["c=list", "strCategory"],
+    "glasses": ["g=list", "strGlass"],
+    "ingredients": ["i=list", "strIngredient1"],
+    "alcoholic": ["a=list", "strAlcoholic"]
+}
 
 
 def create_resource(table_name, param, value_key, context):
@@ -17,51 +23,53 @@ def create_resource(table_name, param, value_key, context):
         if not API_KEY:
             raise ValueError(
                 "Environment variable BEVERAGE_API_KEY is not set or empty.")
-
         url = f"https://www.thecocktaildb.com/api/json/v2/{API_KEY}/list.php?{param}"
-        response = requests.get(url)
-        response.raise_for_status()
-        drinks = response.json().get("drinks", [])
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            drinks = response.json().get("drinks", [])
 
-        state = dlt.current.source_state().setdefault(table_name, {
-            "processed_records": 0,
-            "last_run_status": None,
-            "values": []
-        })
+            state = dlt.current.source_state().setdefault(table_name, {
+                "processed_records": 0,
+                "last_run_status": None,
+                "values": []
+            })
 
-        current_list = [d.get(value_key) for d in drinks if value_key in d]
-        previous_list = state.get("values", [])
-        current_value = len(current_list)
-        previous_value = state.get("processed_records")
+            current_list = [d.get(value_key) for d in drinks if value_key in d]
+            previous_list = state.get("values", [])
+            current_value = len(current_list)
+            previous_value = state.get("processed_records")
 
-        if (current_value == previous_value) or state["last_run_status"] == "failed":
-            context.log.info(
-                f"🔁 SKIPPED LOAD for {table_name}:\n"
-                f"📅 Previous: {previous_value}\n"
-                f"📦 Current: {current_value}\n"
-                f"⏳ No new data for {table_name}. Skipping..."
-            )
-            state["last_run_status"] = "skipped_no_new_data"
-            return
+            if (current_value == previous_value) or state["last_run_status"] == "failed":
+                context.log.info(
+                    f"🔁 SKIPPED LOAD for {table_name}:\n"
+                    f"📅 Previous: {previous_value}\n"
+                    f"📦 Current: {current_value}\n"
+                    f"⏳ No new data for {table_name}. Skipping..."
+                )
+                state["last_run_status"] = "skipped_no_new_data"
+                return
 
-        state["processed_records"] = current_value
-        state["values"] = current_list
-        state["last_run_status"] = "success"
+            state["processed_records"] = current_value
+            state["values"] = current_list
+            state["last_run_status"] = "success"
 
-        for drink in drinks:
-            yield drink
+            for drink in drinks:
+                yield drink
+        except requests.exceptions.RequestException as e:
+            context.log.error(
+                f"Request failed for {table_name}: {e}", exc_info=True)
+            raise
+        except ValueError as e:
+            context.log.error(
+                f"JSON decode failed for {table_name}: {e}", exc_info=True)
+            raise
 
     return resource_func
 
 
 @dlt.source
 def beverage_source(context: OpExecutionContext):
-    TABLE_PARAMS = {
-        "beverages": ["c=list", "strCategory"],
-        "glasses": ["g=list", "strGlass"],
-        "ingredients": ["i=list", "strIngredient1"],
-        "alcoholic": ["a=list", "strAlcoholic"]
-    }
     for table_name, (param, value_key) in TABLE_PARAMS.items():
         yield create_resource(table_name, param, value_key, context)
 
@@ -78,25 +86,17 @@ def beverage_dim_data(context) -> dict:
         dev_mode=False,
     )
     source = beverage_source(context)
-    all_values = {}
-
-    for res in source.resources.values():
-        try:
-            for item in res():
-                if isinstance(item, dict):
-                    for k, v in item.items():
-                        if k not in all_values:
-                            all_values[k] = []
-                        if v not in all_values[k]:  # optional: avoid duplicates
-                            all_values[k].append(v)
-                    # break
-        except Exception as e:
-            context.log.warning(f"Resource failed: {e}")
-
-    # Run the pipeline
     context.log.info("Running pipeline...")
     load_info = pipeline.run(source)
     context.log.info(f"Pipeline finished. Load info: {load_info}")
+
+    all_values = {}
+
+    for table in TABLE_PARAMS.keys():
+        if table in source.state:
+            all_values[table] = source.state[table]["values"]
+        else:
+            context.log.warn(f"Table '{table}' not found in source.state")
 
     return all_values
 
@@ -104,7 +104,7 @@ def beverage_dim_data(context) -> dict:
 def create_dimension_resource(table_name, config, values, context):
     @dlt.resource(name=config["resource_name"], write_disposition="replace")
     def resource_func():
-        categories = values.get(config["sql_column"], [])
+        categories = values.get(table_name, [])
 
         API_KEY = os.getenv('BEVERAGE_API_KEY')
         if not API_KEY:
@@ -140,7 +140,7 @@ def create_dimension_resource(table_name, config, values, context):
                 return
         # Check Previous State:
         previous_value = state.get("processed_records", 0)
-        if total_records == previous_value or state["last_run_status"] == "failed":
+        if total_records == previous_value:
             context.log.info(
                 f"🔁 SKIPPED LOAD for {config['resource_name']}:\n"
                 f"📅 Previous: {previous_value}\n"
@@ -192,7 +192,6 @@ def dimension_data_source(context: OpExecutionContext, values: dict):
 
 @asset(compute_kind="python", deps=["beverage_dim_data"], group_name="Beverages", tags={"source": "Beverages"})
 def dimension_data(context, beverage_dim_data: dict) -> bool:
-
     if not beverage_dim_data:
         context.log.warning(
             "\n⚠️  WARNING: beverage_dim_data SKIPPED\n"
@@ -223,6 +222,7 @@ def dimension_data(context, beverage_dim_data: dict) -> bool:
 
 @asset(compute_kind="python", deps=["dimension_data"], group_name="Beverages", tags={"source": "Beverages"})
 def beverage_fact_data(context, dimension_data: bool) -> bool:
+    # return False
     if not dimension_data:
         context.log.warning(
             "\n⚠️  WARNING: dimension_data SKIPPED\n"
@@ -287,6 +287,7 @@ def beverage_fact_data(context, dimension_data: bool) -> bool:
 @asset(deps=["beverage_fact_data"], group_name="Beverages", tags={"source": "Beverages"})
 def dbt_beverage_data(context: OpExecutionContext, beverage_fact_data: bool):
     """Runs the dbt command after loading the data from Beverage API."""
+    # return False
     if not beverage_fact_data:
         context.log.warning(
             "\n⚠️  WARNING: beverage_fact_data SKIPPED\n"
