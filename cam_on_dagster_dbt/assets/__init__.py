@@ -1,5 +1,5 @@
 from .dbt_assets import camon_dbt_assets
-
+from .open_meteo import openmeteo_asset, dbt_meteo_data
 from .Gsheets import gsheet_finance_data, gsheet_dbt_command
 from .Beverages import (
     beverage_dim_data,
@@ -35,4 +35,6 @@ __all__ = [
     "dbt_openlibrary_data",
     "rick_and_morty_asset",
     "dbt_rick_and_morty_data",
+    "openmeteo_asset",
+    "dbt_meteo_data",
 ]

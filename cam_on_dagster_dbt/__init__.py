@@ -16,6 +16,8 @@ from .assets import (
     dimension_data,
     beverage_fact_data,
     dbt_beverage_data,
+    openmeteo_asset,
+    dbt_meteo_data,
 )
 from .jobs import (
     gsheets_financial_with_dbt_job,
@@ -25,6 +27,7 @@ from .jobs import (
     openlibrary_job,
     RickandMorty_job,
     run_dbt_assets,
+    open_meteo_job,
 )
 from .schedules import schedules
 from .sensors import camon_sensor
@@ -49,6 +52,8 @@ __all__ = [
     "dimension_data",
     "beverage_fact_data",
     "dbt_beverage_data",
+    "openmeteo_asset",
+    "dbt_meteo_data",
     # Jobs
     "gsheets_financial_with_dbt_job",
     "beverage_dim_job",
@@ -57,6 +62,7 @@ __all__ = [
     "openlibrary_job",
     "RickandMorty_job",
     "run_dbt_assets",
+    "open_meteo_job",
     # Others
     "schedules",
     "camon_sensor",

@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: daily_weather
+    description: "Model of daily weather metrics from Open Meteo API"
+    columns:
+      - name: city
+        description: "{{ doc('city') }}"
+        tests:
+          - not_null
+          - unique
+
+      - name: weather_date
+        description: "{{ doc('weather_date') }}"
+        tests:
+          - not_null
+          - unique
+
+      - name: precipitation_sum
+        description: "{{ doc('precipitation_sum') }}"
+
+      - name: shortwave_radiation_sum
+        description: "{{ doc('shortwave_radiation_sum') }}"
+
+      - name: sunrise
+        description: "{{ doc('sunrise') }}"
+
+      - name: sunset
+        description: "{{ doc('sunset') }}"
+
+      - name: temperature_2m_max
+        description: "{{ doc('temperature_2m_max') }}"
+
+      - name: temperature_2m_min
+        description: "{{ doc('temperature_2m_min') }}"
+
+      - name: windgusts_10m_max
+        description: "{{ doc('windgusts_10m_max') }}"
+
+      - name: windspeed_10m_max
+        description: "{{ doc('windspeed_10m_max') }}"

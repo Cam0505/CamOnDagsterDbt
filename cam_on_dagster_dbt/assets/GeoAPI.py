@@ -175,7 +175,7 @@ def get_geo_data(context: OpExecutionContext) -> bool:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="geo_cities_pipeline",
-        destination="duckdb",
+        destination=os.getenv("DLT_DESTINATION", "duckdb"),
         dataset_name="geo_data",
         dev_mode=False
     )
@@ -184,7 +184,8 @@ def get_geo_data(context: OpExecutionContext) -> bool:
     try:
         load_info = pipeline.run(source)
 
-        outcome_data = source.state.get('geo_cities', {}).get("country_status")
+        outcome_data = source.state.get(
+            'geo_cities', {}).get("country_status", {})
 
         context.log.info("Country Status:\n" +
                          json.dumps(outcome_data, indent=2))
