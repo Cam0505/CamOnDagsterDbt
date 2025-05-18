@@ -8,7 +8,7 @@
 -- 2025-05-12 | Cam      | Initial creation
 -- YYYY-MM-DD | NAME     | [Add future changes here]
 -- ------------------------------------------------------------------------------
-
+   
 SELECT meal_id, meal_name,
 category_name, country_name,
 meal_country_category_sk,

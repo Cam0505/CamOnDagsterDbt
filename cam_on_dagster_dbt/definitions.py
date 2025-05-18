@@ -13,7 +13,7 @@ from dagster import Definitions, define_asset_job
 # from cam_on_dagster_dbt.assets import openmeteo_asset, dbt_meteo_data
 
 # Beverages Assets
-from cam_on_dagster_dbt.assets import beverage_dim_data, dimension_data, beverage_fact_data, dbt_beverage_data
+from cam_on_dagster_dbt.assets import dimension_data, beverage_fact_data, dbt_beverage_data
 
 # Meals Assets
 # from cam_on_dagster_dbt.assets import meals_dim_data, meals_dimension_data, meals_fact_data, dbt_meals_data
@@ -36,8 +36,7 @@ from cam_on_dagster_dbt.sensors import camon_sensor
 from cam_on_dagster_dbt.schedules import schedules
 
 # Define the assets
-all_assets = [beverage_dim_data, dimension_data,
-              beverage_fact_data, dbt_beverage_data]
+all_assets = [dimension_data, beverage_fact_data, dbt_beverage_data]
 
 # Register the job, sensor, and schedule in the Definitions
 defs = Definitions(

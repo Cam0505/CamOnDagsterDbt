@@ -9,102 +9,50 @@ import subprocess
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
 TABLE_PARAMS = {
-    "beverages": ["c=list", "strCategory"],
-    "glasses": ["g=list", "strGlass"],
-    "ingredients": ["i=list", "strIngredient1"],
-    "alcoholic": ["a=list", "strAlcoholic"]
+    "beverages": ("c=list", "strCategory"),
+    "glasses": ("g=list", "strGlass"),
+    "ingredients": ("i=list", "strIngredient1"),
+    "alcoholic": ("a=list", "strAlcoholic")
 }
 
 
-def create_resource(table_name, param, value_key, context):
-    @dlt.resource(name=table_name, write_disposition="replace")
-    def resource_func():
-        API_KEY = os.getenv('BEVERAGE_API_KEY')
-        if not API_KEY:
-            raise ValueError(
-                "Environment variable BEVERAGE_API_KEY is not set or empty.")
-        url = f"https://www.thecocktaildb.com/api/json/v2/{API_KEY}/list.php?{param}"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            drinks = response.json().get("drinks", [])
+def fetch_and_extract(table: str) -> list:
+    """
+    Fetch data from TheCocktailDB API based on table type, and normalize to a list of values.
 
-            state = dlt.current.source_state().setdefault(table_name, {
-                "processed_records": 0,
-                "last_run_status": None,
-                "values": []
-            })
+    Args:
+        table (str): One of "beverages", "glasses", "ingredients", "alcoholic".
 
-            current_list = [d.get(value_key) for d in drinks if value_key in d]
-            previous_list = state.get("values", [])
-            current_value = len(current_list)
-            previous_value = state.get("processed_records")
+    Returns:
+        List[str]: Extracted list of values.
+    """
+    API_KEY = os.getenv('BEVERAGE_API_KEY')
+    if not API_KEY:
+        raise ValueError(
+            "Environment variable BEVERAGE_API_KEY is not set or empty.")
 
-            if (current_value == previous_value) or state["last_run_status"] == "failed":
-                context.log.info(
-                    f"🔁 SKIPPED LOAD for {table_name}:\n"
-                    f"📅 Previous: {previous_value}\n"
-                    f"📦 Current: {current_value}\n"
-                    f"⏳ No new data for {table_name}. Skipping..."
-                )
-                state["last_run_status"] = "skipped_no_new_data"
-                return
+    if table not in TABLE_PARAMS:
+        raise ValueError(
+            f"Unsupported table: {table}. Valid options: {list(TABLE_PARAMS.keys())}")
 
-            state["processed_records"] = current_value
-            state["values"] = current_list
-            state["last_run_status"] = "success"
+    param, field = TABLE_PARAMS[table]
+    url = f"https://www.thecocktaildb.com/api/json/v2/{API_KEY}/list.php?{param}"
 
-            for drink in drinks:
-                yield drink
-        except requests.exceptions.RequestException as e:
-            context.log.error(
-                f"Request failed for {table_name}: {e}", exc_info=True)
-            raise
-        except ValueError as e:
-            context.log.error(
-                f"JSON decode failed for {table_name}: {e}", exc_info=True)
-            raise
+    response = requests.get(url)
+    response.raise_for_status()
+    data = response.json()
 
-    return resource_func
+    # Find the first key containing a list of dicts
+    for key, value in data.items():
+        if isinstance(value, list) and all(isinstance(item, dict) for item in value):
+            return [item.get(field) for item in value if field in item]
 
-
-@dlt.source
-def beverage_source(context: OpExecutionContext):
-    for table_name, (param, value_key) in TABLE_PARAMS.items():
-        yield create_resource(table_name, param, value_key, context)
-
-
-@asset(compute_kind="python", group_name="Beverages", tags={"source": "Beverages"})
-def beverage_dim_data(context) -> dict:
-    """Loads beverage dimension tables if row counts differ from expected."""
-
-    context.log.info("Starting DLT pipeline...")
-    pipeline = dlt.pipeline(
-        pipeline_name="beverages_pipeline",
-        destination=os.getenv("DLT_DESTINATION", "duckdb"),
-        dataset_name="beverage_data",
-        dev_mode=False,
-    )
-    source = beverage_source(context)
-    context.log.info("Running pipeline...")
-    load_info = pipeline.run(source)
-    context.log.info(f"Pipeline finished. Load info: {load_info}")
-
-    all_values = {}
-
-    for table in TABLE_PARAMS.keys():
-        if table in source.state:
-            all_values[table] = source.state[table]["values"]
-        else:
-            context.log.warn(f"Table '{table}' not found in source.state")
-
-    return all_values
+    return []
 
 
 def create_dimension_resource(table_name, config, values, context):
     @dlt.resource(name=config["resource_name"], write_disposition="replace")
     def resource_func():
-        categories = values.get(table_name, [])
 
         API_KEY = os.getenv('BEVERAGE_API_KEY')
         if not API_KEY:
@@ -118,7 +66,7 @@ def create_dimension_resource(table_name, config, values, context):
 
         total_records = 0
 
-        for value in categories:
+        for value in values:
             url = f"https://www.thecocktaildb.com/api/json/v2/{API_KEY}/filter.php?{config['query_param']}={value}"
             try:
                 response = requests.get(url)
@@ -157,7 +105,7 @@ def create_dimension_resource(table_name, config, values, context):
 
 
 @dlt.source
-def dimension_data_source(context: OpExecutionContext, values: dict):
+def dimension_data_source(context: OpExecutionContext):
 
     DIMENSION_CONFIG = {
         "ingredients": {
@@ -187,19 +135,12 @@ def dimension_data_source(context: OpExecutionContext, values: dict):
     }
     for table_name, config in DIMENSION_CONFIG.items():
         context.log.info(f"Creating resource: {table_name}")
+        values = fetch_and_extract(table_name)
         yield create_dimension_resource(table_name, config, values, context)
 
 
-@asset(compute_kind="python", deps=["beverage_dim_data"], group_name="Beverages", tags={"source": "Beverages"})
-def dimension_data(context, beverage_dim_data: dict) -> bool:
-    if not beverage_dim_data:
-        context.log.warning(
-            "\n⚠️  WARNING: beverage_dim_data SKIPPED\n"
-            "📉 No data was loaded from beverage_dim_data.\n"
-            "🚫 Skipping dimension_data run.\n"
-            "----------------------------------------"
-        )
-        return False
+@asset(compute_kind="python", group_name="Beverages", tags={"source": "Beverages"})
+def dimension_data(context) -> bool:
 
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
@@ -209,7 +150,7 @@ def dimension_data(context, beverage_dim_data: dict) -> bool:
         dev_mode=False
     )
 
-    source = dimension_data_source(context, beverage_dim_data)
+    source = dimension_data_source(context)
     # run pipeline
     try:
         load_info = pipeline.run(source)

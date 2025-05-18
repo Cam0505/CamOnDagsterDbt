@@ -6,12 +6,10 @@ sources:
     schema: meals_data
     tables:
     # category Type
-      - name: category
       - name: category_table
     # Consumption Fact
       - name: consumption
     # Beverage Type
-      - name: country
       - name: country_table
     # Ingredients
       - name: ingredients

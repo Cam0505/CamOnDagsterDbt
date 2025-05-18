@@ -1,6 +1,6 @@
 # CamOnDagsterDbt
 
-A containerized data engineering project combining [Dagster](https://dagster.io/), [dbt](https://www.getdbt.com/), and [DLT](https://docs.dltHub.com/) to orchestrate, transform, and manage modern data workflows. It uses [DuckDB](https://duckdb.org/) as the local data warehouse backend with plans to migrate to GCP [BigQuery](https://cloud.google.com/bigquery?hl=en) via [Terraform](https://developer.hashicorp.com/terraform) in the future.
+A containerized data engineering project combining [Dagster](https://dagster.io/), [dbt](https://www.getdbt.com/), and [DLT](https://docs.dltHub.com/) to orchestrate, transform, and manage modern data workflows. It uses [MotherDuck](https://motherduck.com/) as the data warehouse with serverless compute. 
 
 ## 🧱 Project Structure
 
@@ -22,17 +22,13 @@ CamOnDagsterDbt/
 │   ├── macros/                   # Custom macros
 │   ├── dbt_project.yml           # dbt project configuration
 │   └── profiles.yml              # dbt profile (excluded from git)
-├── terraform/                    # Infrastructure-as-code for GCP (planned)
-│   ├── main.tf                   # GCP resource definitions
-│   ├── outputs.tf                # Outputs from Terraform resources
-│   ├── variables.tf              # Input variables
-│   └── terraform.tfvars          # Environment-specific values
 ├── .devcontainer/                # Dev container setup
 │   ├── docker-compose.yml
 │   ├── Dockerfile
 │   └── devcontainer.json
 ├── .github/workflows/            # GitHub Actions CI workflows
-│   └── ci.yml
+│   ├── docs.yml                  # Auto Generate DBT Docs
+│   └── ci.yml                    # Automatic CI, builds when changes occur to dbt
 ├── docker-compose.yml            # Main Docker Compose file
 ├── requirements.txt              # Python dependencies
 ├── workspace.yaml                # Dagster workspace configuration
@@ -51,13 +47,9 @@ CamOnDagsterDbt/
 
 - ⚙️ Data Load Tool (DLT) for incremental pipeline automation
 
-- 🦆 DuckDB for local analytics database with SQL support (duck stays — it’s fun!)
+- 🦆 Mother Duck for cloud analytics database
 
 - ✔️ Great Expectations for data testing and validation
-
-- 🛠️ Terraform (planned) for managing cloud infrastructure as code
-
-- ☁️ Google Cloud Platform (planned), with BigQuery for scalable data warehousing
 
 ### Features
 
@@ -68,20 +60,16 @@ CamOnDagsterDbt/
 - Integration of Great Expectations for data quality validation  
 - Environment configurations prepared for local and containerized execution  
 
-### Terraform and Cloud Migration Preparation
+### MotherDuck Migration and Future Orchestration with Dagster Cloud
 
-While the current project runs primarily on DuckDB and local orchestration tools, the codebase and infrastructure are designed with future cloud migration in mind. The project structure already includes:
+The project has recently migrated from local DuckDB to MotherDuck, a cloud-native SQL lakehouse platform, to leverage scalable and performant data warehousing capabilities. This migration positions the project to benefit from a managed, serverless infrastructure that simplifies data storage and query execution.
 
-- Terraform configuration files (planned or partially implemented) to manage infrastructure as code for Google Cloud Platform (GCP).  
-- Access controls and service account management set up for seamless authentication with GCP services.  
-- BigQuery dataset preparation, with the dataset schema and permissions configured and ready for integration.  
+Additionally, there are plans to implement Dagster Cloud for orchestration, which will provide a robust, cloud-based workflow management system. This will enable scalable scheduling, monitoring, and observability of data pipelines, complementing the move to MotherDuck.
 
-This preparation ensures a smooth transition from local DuckDB to a scalable, cloud-native data warehouse using BigQuery, enabling advanced analytics and enterprise-grade data operations. When fully implemented, Terraform will provision and manage GCP resources automatically, aligning infrastructure deployment with the project’s version-controlled codebase.
+This approach ensures the project is future-proofed with a fully managed, cloud-first data stack, improving reliability, scalability, and ease of maintenance while retaining infrastructure-as-code best practices for smooth deployment and governance.
 
 ### Next Steps
-
-- Finalize Terraform scripts for automated GCP resource deployment  
-- Transition pipelines to run on BigQuery for scalable cloud analytics  
+ 
 - Enhance data quality checks with Great Expectations integration  
 - Expand pipeline coverage with additional APIs and datasets
 

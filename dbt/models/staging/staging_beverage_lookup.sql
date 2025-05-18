@@ -1,3 +1,15 @@
+-- ------------------------------------------------------------------------------
+-- Model: Staging_Beverage_Lookup
+-- Description: Staging model for beverage lookup data
+-- ------------------------------------------------------------------------------
+-- Change Log:
+-- Date       | Author   | Description
+-- -----------|----------|-------------------------------------------------------
+-- 2025-05-12 | Cam      | Initial creation
+-- YYYY-MM-DD | NAME     | [Add future changes here]
+-- ------------------------------------------------------------------------------
+
+
 select beverage_name, 
 	-- used in dim_beverage to connect to consumption
     beverage_id, 

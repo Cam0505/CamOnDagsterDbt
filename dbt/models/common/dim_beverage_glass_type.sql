@@ -1,9 +1,15 @@
-with base as (
-SELECT glass_type, glass_type_sk, dbt_valid_to,
-row_number() over(partition by glass_type_sk order by dbt_valid_to desc) as rw_num
+-- ------------------------------------------------------------------------------
+-- Model: Dim_beverage_glass_type
+-- Description: Dimension Table, beverage glass type information
+-- ------------------------------------------------------------------------------
+-- Change Log:
+-- Date       | Author   | Description
+-- -----------|----------|-------------------------------------------------------
+-- 2025-05-17 | Cam      | Initial creation
+-- YYYY-MM-DD | NAME     | [Add future changes here]
+-- ------------------------------------------------------------------------------
+
+SELECT glass_type, glass_type_sk
     from {{ref('glass_type_snapshot')}}
-	)
+	group by glass_type, glass_type_sk
 	
-	Select glass_type, glass_type_sk
-	from base
-	where rw_num = 1

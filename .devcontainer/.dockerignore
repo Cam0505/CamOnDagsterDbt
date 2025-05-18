@@ -1,0 +1,51 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Python virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Git files
+.git/
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+*.duckdb
+
+# IDE / Editor folders
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# DLT / Prefect / Dagster caches and temp files
+.dlt/
+.cam_on_dagster_dbt/
+__pycache__/
+
+# Other common ignores
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*~

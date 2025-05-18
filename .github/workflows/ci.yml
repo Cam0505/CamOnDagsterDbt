@@ -6,9 +6,15 @@ on:
   push:
     branches:
       - main  # Runs when pushing to the main branch
+    paths:
+      - 'dbt/models/**/*.sql'
+      - 'cam_on_dagster_dbt/assets/**'
   pull_request:
     branches:
-      - main  # Runs when creating a pull request to the main branch
+      - main
+    paths:
+      - 'dbt/models/**/*.sql'
+      - 'cam_on_dagster_dbt/assets/**'
 
 
 jobs:
@@ -53,11 +59,35 @@ jobs:
             target: dev
           EOF
      
-      # Step 5: Install DBT package dependencies
-      - name: Install DBT dependencies
+      # Restore previous manifest cache
+      - name: Restore DBT manifest cache
+        uses: actions/cache@v3
+        with:
+          path: dbt/previous-manifest
+          key: dbt-state-${{ github.ref_name }}
+
+      - name: Install DBT packages
+        run: cd dbt && dbt deps
+
+      - name: Run DBT build (with fallback)
         run: |
-          cd dbt && dbt deps
-     
-      # Step 6: DBT Build
-      - name: Run DBT build
-        run: cd dbt && dbt build
+          cd dbt
+          if [ -f previous-manifest/manifest.json ]; then
+            echo "Running incremental dbt build with state:modified+"
+            dbt build --select state:modified+ --state=previous-manifest
+          else
+            echo "No previous manifest. Running full dbt build"
+            dbt build
+          fi
+
+      - name: Compile DBT and prepare new state
+        run: |
+          cd dbt
+          dbt compile --target-path=previous-manifest
+          echo "New manifest generated at dbt/previous-manifest"
+        
+      - name: Save updated manifest to cache
+        uses: actions/cache@v3
+        with:
+          path: dbt/previous-manifest
+          key: dbt-state-${{ github.ref_name }}

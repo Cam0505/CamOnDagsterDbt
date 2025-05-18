@@ -1,3 +1,13 @@
+-- ------------------------------------------------------------------------------
+-- Model: Staging_rm_characters
+-- Description: Staging model for characters data
+-- ------------------------------------------------------------------------------
+-- Change Log:
+-- Date       | Author   | Description
+-- -----------|----------|-------------------------------------------------------
+-- 2025-05-19 | Cam      | Initial creation
+-- YYYY-MM-DD | NAME     | [Add future changes here]
+-- ------------------------------------------------------------------------------
 with episodes_per_character as (
   {{count_grouped_records(source_table='base_rm_character_episode',
         group_cols=["character_dlt_id"],
@@ -5,6 +15,8 @@ with episodes_per_character as (
         alias='Num_Episodes'
         ) }} 
 )
+
+
 
 SELECT bc.character_id, character_name, 
 CASE

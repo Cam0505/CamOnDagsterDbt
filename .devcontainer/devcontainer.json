@@ -18,11 +18,14 @@
         "dbt.profilesDir": "${containerWorkspaceFolder}/dbt",
         "python.linting.enabled": true,
         "python.envFile": "${containerWorkspaceFolder}/.env"
-      }
+      },
+      "extensions": [
+        "ms-python.python",
+        "dbt-labs.dbt"
+      ]
     }
   },
   "containerEnv": {
-    "PYTHONPATH": "/workspaces/CamOnDagster",
-    "GOOGLE_APPLICATION_CREDENTIALS": "/workspaces/CamOnDagster/keys/dagster-sa-key.json"
+    "PYTHONPATH": "/workspaces/CamOnDagster"
   }
 }

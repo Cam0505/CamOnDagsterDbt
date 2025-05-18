@@ -1,12 +1,14 @@
 version: 2
-models:
-- name: base_beverage_glass_lookup
+snapshots:
+- name: glass_type_snapshot
   description: ''
   columns:
-  - name: glass_type
+  - name: beverage_id
     description: ''
     data_tests:
     - not_null
     - unique
+  - name: glass_type
+    description: ''
   - name: glass_type_sk
     description: ''

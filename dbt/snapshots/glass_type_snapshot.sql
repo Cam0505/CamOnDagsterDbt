@@ -1,6 +1,6 @@
 -- ------------------------------------------------------------------------------
 -- Model: glass_type_snapshots.sql
--- Description: Track changes in base_beverage_glass_lookup over time
+-- Description: Track changes in source glass types over time
 -- ------------------------------------------------------------------------------
 -- Change Log:
 -- Date       | Author   | Description
@@ -13,16 +13,16 @@
 {{
     config(
         target_schema='public_snapshots',
-        unique_key='Glass_Type_SK',
+        unique_key='beverage_id',
         strategy='check',
-        check_cols=['Glass_Type'],
+        check_cols=['glass_type'],
         invalidate_hard_deletes=True
     )
 }}
 
 SELECT 
-    Glass_Type,
-    Glass_Type_SK
-FROM {{ref('base_beverage_glass_lookup')}} 
+    id_drink as beverage_id, source_glass as glass_type
+    ,{{ dbt_utils.generate_surrogate_key(["glass_type"]) }} as Glass_Type_SK
+from {{ source("beverages", "glass_table") }}
 
 {% endsnapshot %}

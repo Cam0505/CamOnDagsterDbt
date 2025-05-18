@@ -1,0 +1,14 @@
+version: 2
+models:
+  - name: dim_meal_category
+    description: ''
+    columns:
+      - name: meal_country_category_sk
+        description: ''
+        tests:
+          - unique
+          - not_null
+      - name: category_name
+        description: ''
+      - name: country_name
+        description: ''

@@ -1,3 +1,0 @@
-# terraform.tfvars.example
-project_id = "your-project-id-here"
-region     = "your-region-here"

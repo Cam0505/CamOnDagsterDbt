@@ -1,3 +1,4 @@
+
 # A
 {% docs alcoholic_type %}
     The alcoholic content type of the beverage. The possible values are:

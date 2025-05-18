@@ -2,7 +2,6 @@ from .dbt_assets import camon_dbt_assets
 from .open_meteo import openmeteo_asset, dbt_meteo_data
 from .Gsheets import gsheet_finance_data, gsheet_dbt_command
 from .Beverages import (
-    beverage_dim_data,
     dimension_data,
     beverage_fact_data,
     dbt_beverage_data,

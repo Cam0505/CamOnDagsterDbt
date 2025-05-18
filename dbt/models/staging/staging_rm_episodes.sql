@@ -1,3 +1,14 @@
+-- ------------------------------------------------------------------------------
+-- Model: Staging_rm_episodes
+-- Description: Staging model for Rick and Morty episodes
+-- ------------------------------------------------------------------------------
+-- Change Log:
+-- Date       | Author   | Description
+-- -----------|----------|-------------------------------------------------------
+-- 2025-05-19 | Cam      | Initial creation
+-- YYYY-MM-DD | NAME     | [Add future changes here]
+-- ------------------------------------------------------------------------------
+
 with characters_in_episodes as (
     {{count_grouped_records(source_table='base_rm_episode_character',
         group_cols=["episode_dlt_id"],

@@ -1,0 +1,15 @@
+version: 2
+macros:
+- name: macro_count_grouped_records
+  description: 'Counts the number of records in a table grouped by a specified column.'
+  arguments:
+    - name: table_name
+      description: 'The name of the table to count records from.'
+      type: string
+    - name: group_by_column
+      description: 'The column to group by.'
+      type: string
+  sql: |
+    SELECT {{ group_by_column }}, COUNT(*) AS record_count
+    FROM {{ table_name }}
+    GROUP BY {{ group_by_column }}

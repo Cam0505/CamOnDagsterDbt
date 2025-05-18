@@ -1,4 +1,15 @@
 
+-- ------------------------------------------------------------------------------
+-- Model: Staging_rm_locations
+-- Description: Staging model for Rick and Morty locations
+-- ------------------------------------------------------------------------------
+-- Change Log:
+-- Date       | Author   | Description
+-- -----------|----------|-------------------------------------------------------
+-- 2025-05-19 | Cam      | Initial creation
+-- YYYY-MM-DD | NAME     | [Add future changes here]
+-- ------------------------------------------------------------------------------
+
 with resident_per_location as (
 	{{count_grouped_records(source_table='base_rm_location_residents',
         group_cols=["location_dlt_id"],

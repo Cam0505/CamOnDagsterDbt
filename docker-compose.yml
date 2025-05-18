@@ -13,36 +13,12 @@ services:
       - ./duckdb:/workspaces/CamOnDagster/duckdb:z
     environment:
       - DBT_PROFILES_DIR=/workspaces/CamOnDagster/dbt
-      - DUCKDB_PATH=/workspaces/CamOnDagster/duckdb/CamOnDagster.duckdb
     working_dir: /workspaces/CamOnDagster
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "python", "-c", "import duckdb; conn = duckdb.connect('/workspaces/CamOnPrefect/duckdb/healthcheck.duckdb', read_only=True); conn.close()" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: prefect
-      POSTGRES_PASSWORD: prefect
-      POSTGRES_DB: prefect
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U prefect -d prefect" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    networks:
+      - dagster-net
 
 volumes:
   postgres_data:
-    # Persists database data
-    networks:
-      - dagster-net
 
 networks:
   dagster-net:

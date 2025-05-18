@@ -4,12 +4,12 @@ on:
     branches:
       - main
     paths:
-      - 'dbt/**'
+      - 'dbt/models/**/*.yml'
   pull_request:
     branches:
       - main
     paths:
-      - 'dbt/**'
+      - 'dbt/models/**/*.yml'
 
 permissions:
   pages: write
@@ -41,6 +41,7 @@ jobs:
             outputs:
               dev:
                 type: duckdb
+                path: md:${{ secrets.MOTHERDUCK }}
                 path: ${{ secrets.MOTHERDUCK }}
                 schema: public
                 threads: 2
@@ -64,4 +65,3 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dbt/target
