@@ -1,41 +1,47 @@
 version: 2
 
 models:
-  - name: daily_weather
-    description: "Model of daily weather metrics from Open Meteo API"
+  - name: base_weather
+    description: "{{ doc('base_weather_description') }}"
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - weather_date
+            - city
     columns:
-      - name: city
-        description: "{{ doc('city') }}"
-        tests:
-          - not_null
-          - unique
-
       - name: weather_date
-        description: "{{ doc('weather_date') }}"
-        tests:
-          - not_null
-          - unique
-
+        description: ''
+      - name: city
+        description: ''
+        data_tests:
+          - relationships:
+              to: ref('base_geo')
+              field: city  # Added this field to define the reference column
+      - name: temperature_max
+        description: "{{ doc('temperature_max') }}"
+      - name: temperature_min
+        description: ''
+      - name: windspeed_max
+        description: "{{ doc('wind_speed') }}"
+      - name: windgusts_max
+        description: "{{ doc('windgusts_max') }}"
+      - name: latitude
+        description: "{{ doc('latitude') }}"
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -90
+              max_value: 90
+              strictly: false
+      - name: longitude
+        description: "{{ doc('longitude') }}"
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -180
+              max_value: 180
+              strictly: false
+      - name: temperature_mean
+        description: "{{ doc('temperature_mean') }}"
       - name: precipitation_sum
         description: "{{ doc('precipitation_sum') }}"
-
-      - name: shortwave_radiation_sum
-        description: "{{ doc('shortwave_radiation_sum') }}"
-
-      - name: sunrise
-        description: "{{ doc('sunrise') }}"
-
-      - name: sunset
-        description: "{{ doc('sunset') }}"
-
-      - name: temperature_2m_max
-        description: "{{ doc('temperature_2m_max') }}"
-
-      - name: temperature_2m_min
-        description: "{{ doc('temperature_2m_min') }}"
-
-      - name: windgusts_10m_max
-        description: "{{ doc('windgusts_10m_max') }}"
-
-      - name: windspeed_10m_max
-        description: "{{ doc('windspeed_10m_max') }}"
+      - name: sunshine_duration
+        description: "{{ doc('sunshine_duration') }}"
