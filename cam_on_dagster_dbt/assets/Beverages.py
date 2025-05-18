@@ -81,7 +81,7 @@ def beverage_dim_data(context) -> dict:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="beverages_pipeline",
-        destination="duckdb",
+        destination=os.getenv("DLT_DESTINATION", "duckdb"),
         dataset_name="beverage_data",
         dev_mode=False,
     )
@@ -204,7 +204,7 @@ def dimension_data(context, beverage_dim_data: dict) -> bool:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="beverage_pipeline",
-        destination="duckdb",
+        destination=os.getenv("DLT_DESTINATION", "duckdb"),
         dataset_name="beverage_data",
         dev_mode=False
     )
@@ -270,7 +270,7 @@ def beverage_fact_data(context, dimension_data: bool) -> bool:
     try:
         pipeline = dlt.pipeline(
             pipeline_name="beverage_pipeline",
-            destination="duckdb",
+            destination=os.getenv("DLT_DESTINATION", "duckdb"),
             dataset_name="beverage_data",
             dev_mode=False
         )

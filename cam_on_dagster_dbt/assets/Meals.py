@@ -81,7 +81,7 @@ def meals_dim_data(context) -> dict:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="meals_pipeline",
-        destination="duckdb",
+        destination=os.getenv("DLT_DESTINATION", "duckdb"),
         dataset_name="meals_data",
         dev_mode=False,
     )
@@ -193,7 +193,7 @@ def meals_dimension_data(context, meals_dim_data: dict) -> bool:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="meals_pipeline",
-        destination="duckdb",
+        destination=os.getenv("DLT_DESTINATION", "duckdb"),
         dataset_name="meals_data",
         dev_mode=False
     )
@@ -251,7 +251,7 @@ def meals_fact_data(context, meals_dimension_data: bool) -> bool:
     try:
         pipeline = dlt.pipeline(
             pipeline_name="meals_pipeline",
-            destination="duckdb",
+            destination=os.getenv("DLT_DESTINATION", "duckdb"),
             dataset_name="meals_data",
             dev_mode=False
         )

@@ -142,7 +142,7 @@ def openlibrary_books_asset(context: OpExecutionContext) -> bool:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="openlibrary_incremental",
-        destination="duckdb",
+        destination=os.getenv("DLT_DESTINATION", "duckdb"),
         dataset_name="openlibrary_data"
     )
 

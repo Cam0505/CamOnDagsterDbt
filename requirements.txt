@@ -29,7 +29,3 @@ psycopg2-binary==2.9.10
 # Additional dependencies for data pipelines
 pyarrow>=10.0.0  # Often needed for pandas/dlt
 sqlalchemy>=2.0.40  # Required by dbt-core
-
-# Big Query for Moving my Project to BigQuery eventually
-google-cloud-bigquery==3.32.0
-grpcio-status==1.71.0

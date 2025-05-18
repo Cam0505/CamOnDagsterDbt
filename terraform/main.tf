@@ -12,13 +12,14 @@ provider "google" {
   region  = var.region
 }
 
-resource "google_bigquery_dataset" "dagster_dataset" {
+resource "google_bigquery_dataset" "dagster_data" {
   dataset_id                 = "dagster_data"
   location                   = "australia-southeast1"
   friendly_name              = "Dagster Dataset"
   description                = "Dataset for Dagster pipelines"
   delete_contents_on_destroy = true
 }
+
 
 resource "google_service_account" "dagster_sa" {
   account_id   = "dagster-service-account"
