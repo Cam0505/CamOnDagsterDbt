@@ -20,7 +20,7 @@ models:
       - name: temperature_max
         description: "{{ doc('temperature_max') }}"
       - name: temperature_min
-        description: ''
+        description: 'To Be Added'
       - name: windspeed_max
         description: "{{ doc('wind_speed') }}"
       - name: windgusts_max
