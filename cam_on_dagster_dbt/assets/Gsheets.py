@@ -119,9 +119,9 @@ def gsheet_finance_source(context: OpExecutionContext):
 
 @asset(compute_kind="python", group_name="gSheets", tags={"source": "gSheets"})
 def gsheet_finance_data(context: OpExecutionContext) -> bool:
-    if not is_within_asx_hours():
-        context.log.info("\n\nOutside ASX trading hours - skipping")
-        return False
+    # if not is_within_asx_hours():
+    #     context.log.info("\n\nOutside ASX trading hours - skipping")
+    #     return False
 
     pipeline = dlt.pipeline(
         pipeline_name="gsheets_to_duckdb",

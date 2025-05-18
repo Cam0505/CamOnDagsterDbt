@@ -43,11 +43,13 @@ jobs:
             outputs:
               dev:
                 type: duckdb
-                path: ${{ secrets.DBT_DUCKDB_PATH }}
+                path: ${{ secrets.MOTHERDUCK }}
+                schema: public
+                threads: 2
                 extensions:
                   - httpfs
                   - parquet
-                threads: 2
+                  - motherduck
             target: dev
           EOF
      
@@ -58,4 +60,4 @@ jobs:
      
       # Run Dim Date because it doesn't dependent on other pipelines, makes sure the database and dbt work
       - name: Run DBT build
-        run: cd dbt && dbt build --select dim_date
+        run: cd dbt && dbt build

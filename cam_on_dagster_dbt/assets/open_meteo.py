@@ -30,7 +30,13 @@ cities = {
     "Hobart": {"lat": -42.8821, "lng": 147.3272,
                "timezone": "Australia/Hobart"},
     "Darwin": {"lat": -12.4634,
-               "lng": 130.8456, "timezone": "Australia/Darwin"}
+               "lng": 130.8456, "timezone": "Australia/Darwin"},
+    "Cairns": {"lat": -16.92366, "lng": 145.76613,
+               "timezone": "Australia/Brisbane"},
+    "Alice Springs": {"lat": -23.697479, "lng": 133.883621,
+                      "timezone": "Australia/Darwin"},
+    "Albany": {"lat": -35.02692, "lng": 117.88369,
+               "timezone": "Australia/Perth"}
 }
 today = datetime.now(ZoneInfo("Australia/Sydney")).date()
 end_date = today - timedelta(days=2)
@@ -40,11 +46,17 @@ start_date = end_date - timedelta(days=3 * 365)
 BASE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 
+def json_converter(o):
+    if isinstance(o, date):
+        return o.isoformat()
+    return str(o)
+
+
 def get_city_date_stats(context) -> Dict[str, Dict[str, date]]:
-    db_path = os.getenv("DESTINATION__DUCKDB__CREDENTIALS")
+    db_path = os.getenv("MOTHERDUCK")
     if not db_path:
         raise ValueError(
-            "Missing DESTINATION__DUCKDB__CREDENTIALS in environment.")
+            "Missing MOTHERDUCK in environment.")
     conn = duckdb.connect(database=db_path, read_only=True)
     try:
         result = conn.execute("""
@@ -117,7 +129,7 @@ def openmeteo_source(cities: dict, base_start_date: date, end_date: date, contex
         state = dlt.current.source_state().setdefault("Weather", {
             "city_date": {},
             "city_status": {},
-            "last_run_date": {"Min": end_date, "Max": end_date},
+            "last_run_date": {"Min": str(end_date), "Max": str(end_date)},
             "last_run_status": None
         })
 
@@ -192,8 +204,8 @@ def openmeteo_source(cities: dict, base_start_date: date, end_date: date, contex
             if success:
                 state["city_status"][city] = "success"
                 state["city_date"][city] = {
-                    "start": city_start,
-                    "end": end_date
+                    "start": city_start.isoformat() if isinstance(city_start, date) else city_start,
+                    "end": end_date.isoformat() if isinstance(end_date, date) else end_date
                 }
                 all_dates.append(city_start)
                 all_dates.append(end_date)
@@ -230,7 +242,7 @@ def openmeteo_asset(context: OpExecutionContext) -> bool:
         pipeline.run(source)
         outcome_data = source.state.get('Weather', {})
         context.log.info("Weather State Metadata:\n" +
-                         json.dumps(outcome_data, indent=2))
+                         json.dumps(outcome_data, indent=2, default=json_converter))
 
         statuses = [outcome_data.get("city_status", {}).get(
             city, '') for city in cities.keys()]
@@ -273,7 +285,7 @@ def dbt_meteo_data(context: OpExecutionContext, get_geo_data: bool) -> None:
     try:
         result = subprocess.run(
             ["dbt", "build", "--select", "source:weather+"],
-            shell=True,
+            # shell=True,
             cwd=DBT_PROJECT_DIR,
             capture_output=True,
             text=True,

@@ -42,10 +42,10 @@ def paginate_all(endpoint: str) -> list[Dict[str, Any]]:
 
 
 def get_existing_count(table_name: str, context) -> int:
-    db_path = os.getenv("DESTINATION__DUCKDB__CREDENTIALS")
+    db_path = os.getenv("MOTHERDUCK")
     if not db_path:
         raise ValueError(
-            "Missing DESTINATION__DUCKDB__CREDENTIALS in environment.")
+            "Missing MOTHERDUCK in environment.")
     if table_name not in RESOURCE_CONFIG.keys():
         raise ValueError("Unauthorized access attempt.")
 

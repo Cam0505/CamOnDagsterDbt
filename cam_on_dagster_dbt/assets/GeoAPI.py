@@ -14,10 +14,10 @@ COUNTRIES = ["AU", "NZ", "GB", "CA"]
 
 
 def get_existing_count(country_code: str, context) -> int:
-    db_path = os.getenv("DESTINATION__DUCKDB__CREDENTIALS")
+    db_path = os.getenv("MOTHERDUCK")
     if not db_path:
         raise ValueError(
-            "Missing DESTINATION__DUCKDB__CREDENTIALS in environment.")
+            "Missing MOTHERDUCK in environment.")
 
     con = duckdb.connect(database=db_path)
     try:
