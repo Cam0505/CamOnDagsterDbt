@@ -9,7 +9,7 @@
 -- YYYY-MM-DD | NAME     | [Add future changes here]
 -- ------------------------------------------------------------------------------
 
-select id_drink as beverage_id, str_drink as beverage_name, 
+select bc.id_drink as beverage_id, str_drink as beverage_name, 
 bcl.beverage_category_sk as beverage_category_sk,
 str_glass as glass_type,
 bcl.beverage_type_sk as beverage_type_sk,
@@ -26,7 +26,7 @@ str_ingredient6, str_ingredient7, str_ingredient8
 	-- from public_base.base_beverage_consumption as bc
     from "camondagster"."public_base"."base_beverage_consumption" as bc
 	-- left join public_base.base_beverage_glass_lookup as bgl
-    left join "camondagster"."public_base"."base_beverage_glass_lookup"  as bgl
-	on bc.str_glass = bgl.glass_type
+    left join "camondagster"."public_snapshots"."glass_type_snapshot"  as bgl
+	on bc.id_drink = bgl.beverage_id and dbt_valid_to is null
 	left join "camondagster"."public_staging"."staging_beverage_lookup"  as bcl
 	on bc.id_drink = bcl.beverage_id
