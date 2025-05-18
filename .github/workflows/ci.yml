@@ -58,6 +58,6 @@ jobs:
         run: |
           cd dbt && dbt deps
      
-      # Run Dim Date because it doesn't dependent on other pipelines, makes sure the database and dbt work
+      # Step 6: DBT Build
       - name: Run DBT build
         run: cd dbt && dbt build

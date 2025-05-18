@@ -1,0 +1,58 @@
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'dbt/**'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Set up DBT profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<EOF
+          camondagster:
+            outputs:
+              dev:
+                type: duckdb
+                path: ${{ secrets.MOTHERDUCK }}
+                schema: public
+                threads: 2
+                extensions:
+                  - httpfs
+                  - parquet
+                  - motherduck
+            target: dev
+          EOF
+
+      - name: Install DBT packages
+        run: cd dbt && dbt deps
+
+      - name: Generate DBT docs
+        run: cd dbt && dbt docs generate
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dbt/target
