@@ -43,7 +43,7 @@ jobs:
             outputs:
               dev:
                 type: duckdb
-                path: ${{ secrets.MOTHERDUCK }}
+                path: md:${{ secrets.MOTHERDUCK }}
                 schema: public
                 threads: 2
                 extensions:
