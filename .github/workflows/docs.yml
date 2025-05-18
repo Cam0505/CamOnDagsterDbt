@@ -41,7 +41,7 @@ jobs:
             outputs:
               dev:
                 type: duckdb
-                path: md:${{ secrets.MOTHERDUCK }}
+                path: ${{ secrets.MOTHERDUCK }}
                 schema: public
                 threads: 2
                 extensions:
@@ -50,6 +50,9 @@ jobs:
                   - motherduck
             target: dev
           EOF
+
+      - name: Set MotherDuck token
+        run: echo "MD_TOKEN=${{ secrets.MOTHERDUCK_TOKEN }}" >> $GITHUB_ENV
 
       - name: Install DBT packages
         run: cd dbt && dbt deps

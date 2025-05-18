@@ -5,7 +5,7 @@ sources:
     database: camondagster
     schema: beverage_data
     tables:
-    # Alcoholic Type
+    # Alcoholic
       - name: alcoholic
       - name: alcoholic_table
     # Consumption Fact
