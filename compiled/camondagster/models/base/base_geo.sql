@@ -1,6 +1,7 @@
 -- ------------------------------------------------------------------------------
 -- Model: Base_Geo
 -- Description: Base Table for multiple Dims - City, Country, Region and Continent
+-- Plan to add in more countries in the future
 -- ------------------------------------------------------------------------------
 -- Change Log:
 -- Date       | Author   | Description
