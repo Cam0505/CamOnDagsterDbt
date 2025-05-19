@@ -1,3 +1,14 @@
+-- ------------------------------------------------------------------------------
+-- Model: Dim Date
+-- Description: Dimension Table, date information
+-- ------------------------------------------------------------------------------
+-- Change Log:
+-- Date       | Author   | Description
+-- -----------|----------|-------------------------------------------------------
+-- 2025-05-17 | Cam      | Initial creation
+-- YYYY-MM-DD | NAME     | [Add future changes here]
+-- ------------------------------------------------------------------------------
+
 WITH RECURSIVE date_series AS (
     SELECT DATE '2000-01-01' AS date
     UNION ALL
