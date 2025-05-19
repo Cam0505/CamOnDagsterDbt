@@ -1,7 +1,7 @@
 
 -- ------------------------------------------------------------------------------
 -- Model: base_weather
--- Description: Base Table for weather data from API
+-- Description: Base Table for weather data from API, Can perform bulk loads
 -- ------------------------------------------------------------------------------
 -- Change Log:
 -- Date       | Author   | Description

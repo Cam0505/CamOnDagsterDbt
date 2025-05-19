@@ -32,17 +32,21 @@ from cam_on_dagster_dbt.jobs import beverage_dim_job
 # from cam_on_dagster_dbt.jobs import geo_data_job
 # from cam_on_dagster_dbt.jobs import openlibrary_job
 
+# Youtube
+from cam_on_dagster_dbt.assets.youtube import youtube_pipeline
+from cam_on_dagster_dbt.jobs import Youtube_Job
+
 from cam_on_dagster_dbt.sensors import camon_sensor
 from cam_on_dagster_dbt.schedules import schedules
 
 # Define the assets
-all_assets = [dimension_data, beverage_fact_data, dbt_beverage_data]
+all_assets = [youtube_pipeline]
 
 # Register the job, sensor, and schedule in the Definitions
 defs = Definitions(
     assets=all_assets,
     # Register only the gsheets job
-    jobs=[beverage_dim_job],
+    jobs=[Youtube_Job],
     schedules=[schedules]  # ,
     # sensors=[camon_sensor]
 )
@@ -50,7 +54,7 @@ defs = Definitions(
 # Execute the job immediately
 if __name__ == "__main__":
     try:
-        result = beverage_dim_job.execute_in_process()
-        print("beverage_dim_job Job finished:", result.success)
+        result = Youtube_Job.execute_in_process()
+        print("Youtube_Job Job finished:", result.success)
     except Exception as e:
         print(f"Error executing job: {e}")

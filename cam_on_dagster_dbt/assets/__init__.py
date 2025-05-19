@@ -1,6 +1,7 @@
 from .dbt_assets import camon_dbt_assets
 from .open_meteo import openmeteo_asset, dbt_meteo_data
 from .Gsheets import gsheet_finance_data, gsheet_dbt_command
+from .youtube import youtube_pipeline
 from .Beverages import (
     dimension_data,
     beverage_fact_data,

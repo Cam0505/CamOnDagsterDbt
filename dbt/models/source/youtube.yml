@@ -1,0 +1,14 @@
+sources:
+  - name: youtube
+    database: camondagster
+    schema: youtube_data
+    # Still need to pull in Video Categories
+    tables:
+      - name: videos
+        description: 'YouTube Video Metadata'
+      - name: comments
+        description: 'YouTube Video Comments' 
+      - name: channels
+        description: 'YouTube Channel Metadata'
+      - name: playlists
+        description: 'YouTube Playlist Metadata'

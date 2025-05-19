@@ -93,3 +93,11 @@ jobs:
         with:
           path: dbt/previous-manifest
           key: dbt-state-${{ github.ref_name }}
+        
+      - name: Check cache status
+        run: |
+          if [ -d dbt/previous-manifest ]; then
+            echo "Cache restored successfully."
+          else
+            echo "Cache not found or restored."
+          fi
