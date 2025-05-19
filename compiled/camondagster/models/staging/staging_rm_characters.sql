@@ -1,3 +1,13 @@
+-- ------------------------------------------------------------------------------
+-- Model: Staging_rm_characters
+-- Description: Staging model for characters data
+-- ------------------------------------------------------------------------------
+-- Change Log:
+-- Date       | Author   | Description
+-- -----------|----------|-------------------------------------------------------
+-- 2025-05-19 | Cam      | Initial creation
+-- YYYY-MM-DD | NAME     | [Add future changes here]
+-- ------------------------------------------------------------------------------
 with episodes_per_character as (
   
 (
