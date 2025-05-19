@@ -7,14 +7,16 @@ on:
     branches:
       - main  # Runs when pushing to the main branch
     paths:
-      - 'dbt/models/**/*.sql'
-      - 'cam_on_dagster_dbt/assets/**'
+      - 'dbt/models/**/*.sql' # Only run on changes to SQL files in the dbt/models directory
+      - 'dbt/models/**/*.py'
+      - 'cam_on_dagster_dbt/assets/*.py' # Only run on changes to assets in the cam_on_dagster_dbt directory
   pull_request:
     branches:
       - main
     paths:
       - 'dbt/models/**/*.sql'
-      - 'cam_on_dagster_dbt/assets/**'
+      - 'dbt/models/**/*.py'
+      - 'cam_on_dagster_dbt/assets/*.py'
 
 
 jobs:
