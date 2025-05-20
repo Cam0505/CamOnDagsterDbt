@@ -2,8 +2,8 @@
 from dagster import Definitions, define_asset_job
 
 # Import Rick and Morty assets and jobs (active)
-# from cam_on_dagster_dbt.assets import rick_and_morty_asset, dbt_rick_and_morty_data
-# from cam_on_dagster_dbt.jobs import RickandMorty_job
+from cam_on_dagster_dbt.assets import rick_and_morty_asset, dbt_rick_and_morty_data
+from cam_on_dagster_dbt.jobs import RickandMorty_job
 
 # Uncomment and import other assets/jobs as needed:
 
@@ -33,20 +33,20 @@ from cam_on_dagster_dbt.jobs import beverage_dim_job
 # from cam_on_dagster_dbt.jobs import openlibrary_job
 
 # Youtube
-from cam_on_dagster_dbt.assets.youtube import youtube_pipeline
-from cam_on_dagster_dbt.jobs import Youtube_Job
+# from cam_on_dagster_dbt.assets.youtube import youtube_pipeline
+# from cam_on_dagster_dbt.jobs import Youtube_Job
 
 from cam_on_dagster_dbt.sensors import camon_sensor
 from cam_on_dagster_dbt.schedules import schedules
 
 # Define the assets
-all_assets = [youtube_pipeline]
+all_assets = [rick_and_morty_asset, dbt_rick_and_morty_data]
 
 # Register the job, sensor, and schedule in the Definitions
 defs = Definitions(
     assets=all_assets,
     # Register only the gsheets job
-    jobs=[Youtube_Job],
+    jobs=[RickandMorty_job],
     schedules=[schedules]  # ,
     # sensors=[camon_sensor]
 )
@@ -54,7 +54,7 @@ defs = Definitions(
 # Execute the job immediately
 if __name__ == "__main__":
     try:
-        result = Youtube_Job.execute_in_process()
-        print("Youtube_Job Job finished:", result.success)
+        result = RickandMorty_job.execute_in_process()
+        print("RickandMorty_job Job finished:", result.success)
     except Exception as e:
         print(f"Error executing job: {e}")

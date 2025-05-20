@@ -1,6 +1,6 @@
 from dagster import asset, OpExecutionContext
 import os
-import requests
+# import requests
 from dotenv import load_dotenv
 from pathlib import Path
 import dlt
@@ -8,6 +8,8 @@ import time
 import subprocess
 from typing import Iterator, Dict, Any
 import duckdb
+from dlt.sources.helpers.rest_client.paginators import JSONLinkPaginator
+from dlt.sources.helpers.rest_client.client import RESTClient
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
 
@@ -19,26 +21,6 @@ RESOURCE_CONFIG: dict[str, str] = {
     "episode": "id",
     "location": "id"
 }
-
-
-def paginate_all(endpoint: str) -> list[Dict[str, Any]]:
-    """Fetch all pages for a given Rick and Morty endpoint."""
-    results = []
-    url = f"{BASE_URL}/{endpoint}"
-    while url:
-        for _ in range(3):
-            try:
-                resp = requests.get(url)
-                resp.raise_for_status()
-                break
-            except requests.RequestException as e:
-                time.sleep(2)
-        else:
-            raise RuntimeError(f"Failed to fetch page: {url}")
-        data = resp.json()
-        results.extend(data.get("results", []))
-        url = data.get("info", {}).get("next")
-    return results
 
 
 def get_existing_count(table_name: str, context) -> int:
@@ -72,12 +54,18 @@ def make_resource(endpoint: str, primary_key: str):
         })
 
         existing_count = get_existing_count(table_name, context)
-
+        client = RESTClient(
+            base_url=f"{BASE_URL}/",
+            paginator=JSONLinkPaginator(
+                next_url_path="info.next"
+            )
+        )
         # Only fetch first page to check count
         try:
-            first_page = requests.get(f"{BASE_URL}/{endpoint}")
-            first_page.raise_for_status()
-            info = first_page.json().get("info", {})
+            response = client.session.get(f"{BASE_URL}/{endpoint}")
+            response.raise_for_status()
+            first_page = response.json()
+            info = first_page.get("info", {})
             new_count = info.get("count", 0)
         except Exception as e:
             context.log.error(
@@ -96,10 +84,12 @@ def make_resource(endpoint: str, primary_key: str):
         context.log.info(
             f"✅ New data for `{table_name}`: {state['count']} ➝ {new_count}")
 
-        data = paginate_all(endpoint)
         state["count"] = new_count
         state["last_run_status"] = "success"
-        yield from data
+        context.log.info(
+            f"📊 Loading `{table_name}` data from Rick and Morty API...")
+        for page in client.paginate(endpoint):
+            yield page
 
     return _resource
 
