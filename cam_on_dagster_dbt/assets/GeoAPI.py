@@ -1,35 +1,31 @@
 from dagster import asset, OpExecutionContext
 import os
-import requests
 from dotenv import load_dotenv
 from pathlib import Path
 import dlt
 import time
 import subprocess
-import duckdb
 import json
+from dlt.sources.helpers.requests import get
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
 COUNTRIES = ["AU", "NZ", "GB", "CA"]
 
 
 def get_existing_count(country_code: str, context) -> int:
-    db_path = os.getenv("MOTHERDUCK")
-    if not db_path:
-        raise ValueError(
-            "Missing MOTHERDUCK in environment.")
-
-    con = duckdb.connect(database=db_path)
     try:
-        result = con.execute(
-            "SELECT COUNT(*) FROM geo_data.geo_cities WHERE country_code = ?",
-            [country_code]).fetchone()
-        return result[0] if result else 0
+        pipeline = dlt.current.pipeline()
+        with pipeline.sql_client() as client:
+            result = client.execute_sql(
+                f"SELECT COUNT(*) FROM geo_data.geo_cities WHERE country_code = '{country_code}'")
+            count = result[0][0] if result else 0
+            context.log.info(
+                f"🔍 Existing row count for `{country_code}`: {count}")
+            return count
     except Exception as e:
-        context.log.warn(f"Failed to get row count for geo_cities: {e}")
-        return 0  # Table might not exist yet
-    finally:
-        con.close()
+        context.log.warning(
+            f"⚠️ Could not get count for {country_code}: {str(e)}")
+        return 0  # Assume table doesn't exist yet
 
 
 @dlt.source
@@ -52,28 +48,12 @@ def geo_source(context: OpExecutionContext):
         BASE_URL = "http://api.geonames.org/citiesJSON"
         DETAILS_URL = "http://api.geonames.org/getJSON"
 
-        def make_request_with_retries(url, params, max_retries=5, backoff_factor=2):
-            for attempt in range(max_retries):
-                try:
-                    prepared = requests.Request(
-                        "GET", url, params=params).prepare()
-                    response = requests.get(url, params=params, timeout=10)
-                    response.raise_for_status()
-                    return response.json()
-                except requests.RequestException as e:
-                    wait_time = backoff_factor ** attempt
-                    context.log.warning(
-                        f"Attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")
-                    time.sleep(wait_time)
-            context.log.error(f"All retries failed for params: {params}")
-            return {}
-
         def fetch_city_details(geoname_id):
             params = {
                 "geonameId": geoname_id,
                 "username": USERNAME
             }
-            return make_request_with_retries(DETAILS_URL, params)
+            return get(DETAILS_URL, params=params).json()
 
         def fetch_cities(country_code):
             max_rows = 100
@@ -101,8 +81,8 @@ def geo_source(context: OpExecutionContext):
             if country_code in bboxes:
                 params.update(bboxes[country_code])
             try:
-                cities_data = make_request_with_retries(
-                    BASE_URL, params).get("geonames", [])
+                cities_data = get(BASE_URL, params=params).json().get(
+                    "geonames", [])
             except Exception as e:
                 context.log.error(
                     f"Failed to fetch cities for {country_code}: {e}")

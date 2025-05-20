@@ -1,48 +1,53 @@
 name: Continuous Integration
 
-
-# Trigger this workflow on push or pull_request events
 on:
   push:
     branches:
-      - main  # Runs when pushing to the main branch
+      - main
     paths:
-      - 'dbt/models/**/*.sql' # Only run on changes to SQL files in the dbt/models directory
-      - 'dbt/models/**/*.py'
-      - 'cam_on_dagster_dbt/assets/*.py' # Only run on changes to assets in the cam_on_dagster_dbt directory
+      - 'dbt/models/**'
+      - 'cam_on_dagster_dbt/assets/*.py'
   pull_request:
     branches:
       - main
     paths:
-      - 'dbt/models/**/*.sql'
-      - 'dbt/models/**/*.py'
+      - 'dbt/models/**'
       - 'cam_on_dagster_dbt/assets/*.py'
-
 
 jobs:
   test:
-    runs-on: ubuntu-latest  # Use the latest Ubuntu environment
-
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout main branch
         uses: actions/checkout@v3
-
-
-      # Step 2: Set up Python
-      - name: Set up Python
-        uses: actions/setup-python@v4
         with:
-          python-version: '3.11.12'  # or whatever version you use
+          fetch-depth: 0  # Needed to fetch other branches like dbt-manifest-state
 
+      - name: Set up Git config
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
 
-      # Step 3 Install dependencies
+      - name: Try to restore previous manifest from dbt-manifest-state branch
+        run: |
+          git fetch origin dbt-manifest-state || echo "No manifest branch yet"
+          git checkout origin/dbt-manifest-state -- dbt/previous-manifest/manifest.json || echo "No previous manifest found"
+        continue-on-error: true
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
-      # Step 4
+
       - name: Set up DBT profile
         run: |
           mkdir -p ~/.dbt
@@ -60,13 +65,6 @@ jobs:
                   - motherduck
             target: dev
           EOF
-     
-      # Restore previous manifest cache
-      - name: Restore DBT manifest cache
-        uses: actions/cache@v3
-        with:
-          path: dbt/previous-manifest
-          key: dbt-state-${{ github.ref_name }}
 
       - name: Install DBT packages
         run: cd dbt && dbt deps
@@ -82,22 +80,41 @@ jobs:
             dbt build
           fi
 
-      - name: Compile DBT and prepare new state
+      - name: Compile DBT and generate new manifest
         run: |
           cd dbt
+          rm -rf previous-manifest
           dbt compile --target-path=previous-manifest
-          echo "New manifest generated at dbt/previous-manifest"
-        
-      - name: Save updated manifest to cache
-        uses: actions/cache@v3
-        with:
-          path: dbt/previous-manifest
-          key: dbt-state-${{ github.ref_name }}
-        
-      - name: Check cache status
+          echo "New manifest compiled at dbt/previous-manifest"
+
+      - name: Commit and push updated manifest to dbt-manifest-state branch
         run: |
-          if [ -d dbt/previous-manifest ]; then
-            echo "Cache restored successfully."
+          if git show-ref --quiet refs/heads/dbt-manifest-state; then
+            git worktree add tmp-state-branch dbt-manifest-state || echo "Worktree already exists"
           else
-            echo "Cache not found or restored."
+            # Create orphan branch in worktree and initialize it with empty commit
+            git worktree add tmp-state-branch
+            cd tmp-state-branch
+            git checkout --orphan dbt-manifest-state
+            git rm -rf .
+            git commit --allow-empty -m "Initialize manifest state branch"
+            cd ..
           fi
+
+          mkdir -p tmp-state-branch/dbt/previous-manifest
+          cp -r dbt/previous-manifest/* tmp-state-branch/dbt/previous-manifest/
+
+          cd tmp-state-branch
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add dbt/previous-manifest/manifest.json
+          git commit -m "Update manifest for run ${{ github.run_id }}" || echo "No changes to commit"
+          git push origin dbt-manifest-state --force
+
+          cd ..
+
+          # Clean and forcibly remove the worktree to avoid errors
+          git worktree prune
+          git worktree remove --force tmp-state-branch

@@ -6,7 +6,7 @@
 -- Date       | Author   | Description
 -- -----------|----------|-------------------------------------------------------
 -- 2025-05-12 | Cam      | Initial creation
--- YYYY-MM-DD | NAME     | [Add future changes here]
+-- YYYY-MM-DD | NAME     | [Add future changes here] (Second Test, Please work)
 -- ------------------------------------------------------------------------------
 select bt.str_drink as beverage_name, 
     bt.id_drink as beverage_id, 

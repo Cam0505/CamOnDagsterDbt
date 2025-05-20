@@ -1,6 +1,6 @@
 -- ------------------------------------------------------------------------------
 -- Model: Dim_alcoholic_type
--- Description: Dimension Table, alcoholic type information
+-- Description: Dimension Table, alcoholic type information (Test)
 -- ------------------------------------------------------------------------------
 -- Change Log:
 -- Date       | Author   | Description

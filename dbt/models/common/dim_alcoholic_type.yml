@@ -4,6 +4,6 @@ models:
   description: ''
   columns:
   - name: alcoholic_type
-    description: ''
+    description: 'Test'
   - name: alcoholic_type_sk
-    description: ''
+    description: 'Unique key for alcoholic type'

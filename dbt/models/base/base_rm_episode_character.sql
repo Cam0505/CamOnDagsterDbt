@@ -1,6 +1,6 @@
 -- ------------------------------------------------------------------------------
 -- Model: Base_rm_episode_character
--- Description: Base join table
+-- Description: Base join table Testing GitHub Actions
 -- ------------------------------------------------------------------------------
 -- Change Log:
 -- Date       | Author   | Description

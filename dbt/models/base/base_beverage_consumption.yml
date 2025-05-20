@@ -4,7 +4,7 @@ models:
   description: ''
   columns:
   - name: id_drink
-    description: ''
+    description: 'Unique identifier for each drink'
     data_tests:
     - not_null
     - relationships:

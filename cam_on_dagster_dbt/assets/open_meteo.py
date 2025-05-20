@@ -6,7 +6,6 @@ import dlt
 import subprocess
 from typing import Dict
 from pathlib import Path
-import duckdb
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 import json
@@ -53,37 +52,33 @@ def json_converter(o):
 
 
 def get_city_date_stats(context) -> Dict[str, Dict[str, date]]:
-    db_path = os.getenv("MOTHERDUCK")
-    if not db_path:
-        raise ValueError(
-            "Missing MOTHERDUCK in environment.")
-    conn = duckdb.connect(database=db_path, read_only=True)
     try:
-        result = conn.execute("""
+        pipeline = dlt.current.pipeline()
+        with pipeline.sql_client() as client:
+            result = client.execute_sql("""
             SELECT
                 City,
                 MIN(date::date) as min_date,
                 MAX(date::date) as max_date,
                 COUNT(*) as count
             FROM weather_data.daily_weather
-            GROUP BY City
-        """).fetchall()
-        return {
-            row[0]: {
-                "min_date": row[1],
-                "max_date": row[2],
-                "count": row[3]
+            GROUP BY City""")
+            if not result:
+                context.log.info("No results returned from SQL query.")
+                return {}
+
+            return {
+                row[0]: {
+                    "min_date": row[1],
+                    "max_date": row[2],
+                    "count": row[3]
+                }
+                for row in result
             }
-            for row in result
-        }
-    except duckdb.CatalogException as e:
-        context.log.info(f"No Table Exists: {e}")
-        return {}  # Table doesn't exist
     except Exception as e:
-        context.log.info(f"Exception: {e}")
-        return {}
-    finally:
-        conn.close()
+        context.log.warning(
+            f"⚠️ Could not return query data: {str(e)}")
+        return {}  # Assume table doesn't exist yet
 
 
 def get_weather_data(lat: float, lng: float, start_date: date, end_date: date, timezone: str, context: OpExecutionContext):

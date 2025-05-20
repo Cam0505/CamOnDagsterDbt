@@ -12,6 +12,7 @@ services:
       - ../:/workspaces/CamOnDagster:cached
       - ./duckdb:/workspaces/CamOnDagster/duckdb:z
     environment:
+      - DLT_TELEMETRY=off
       - DBT_PROFILES_DIR=/workspaces/CamOnDagster/dbt
     working_dir: /workspaces/CamOnDagster
     networks:

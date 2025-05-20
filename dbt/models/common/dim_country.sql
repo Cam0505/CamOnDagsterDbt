@@ -1,6 +1,6 @@
 -- ------------------------------------------------------------------------------
 -- Model: Dim Country
--- Description: Dimension Table, country information
+-- Description: Dimension Table, country information (Test)
 -- ------------------------------------------------------------------------------
 -- Change Log:
 -- Date       | Author   | Description

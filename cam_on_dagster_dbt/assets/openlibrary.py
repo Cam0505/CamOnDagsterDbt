@@ -1,14 +1,12 @@
-from dagster import asset, OpExecutionContext
-import os
-import requests
-from dotenv import load_dotenv
-from pathlib import Path
 import dlt
-import time
-import subprocess
+from dlt.sources.helpers.requests import get
+import os
+from dagster import asset, OpExecutionContext
+import threading
 from typing import Iterator, Dict
-import duckdb
-
+import subprocess
+import time
+from dotenv import load_dotenv
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
 
 
@@ -25,15 +23,20 @@ SEARCH_TOPICS: dict[str, list[str]] = {
 }
 
 
-def fetch_books(term: str) -> Dict:
+def get_existing_count(table_name: str, context) -> int:
     try:
-        response = requests.get(
-            BASE_URL, params={"q": term, "limit": 100}, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        raise RuntimeError(
-            f"Failed to fetch books for term '{term}': {e}") from e
+        pipeline = dlt.current.pipeline()
+        with pipeline.sql_client() as client:
+            result = client.execute_sql(
+                f"SELECT COUNT(*) FROM openlibrary_data.{table_name}")
+            count = result[0][0] if result else 0
+            context.log.info(
+                f"🔍 Existing row count for `{table_name}`: {count}")
+            return count
+    except Exception as e:
+        context.log.warning(
+            f"⚠️ Could not get count for {table_name}: {str(e)}")
+        return 0  # Assume table doesn't exist yet
 
 
 def create_resource(term: str, topic: str, resource_name: str, context: OpExecutionContext):
@@ -44,32 +47,11 @@ def create_resource(term: str, topic: str, resource_name: str, context: OpExecut
             "count": 0,
             "last_run_status": None
         })
-        db_path = os.getenv("MOTHERDUCK")
-        if not db_path:
-            raise ValueError(
-                "Missing MOTHERDUCK in environment.")
-        # Count filtered rows currently in DuckDB
 
-        current_table_count = 0
+        current_table_count = get_existing_count(resource_name, context)
         try:
-            con = duckdb.connect(database=db_path)
-            try:
-                table_name = f"openlibrary_data.{resource_name}"
-                result = con.execute(
-                    f"SELECT COUNT(*) FROM {table_name}").fetchone()
-                current_table_count = result[0] if result else 0
-            except Exception as e:
-                context.log.warning(
-                    f"Table {table_name} doesn't exist yet or error reading it: {e}")
-            finally:
-                con.close()
-        except Exception as e:
-            context.log.error(f"❌ Failed to connect to DuckDB: {e}")
-            state["last_run_status"] = "failed"
-            return
-
-        try:
-            data = fetch_books(term)
+            response = get(BASE_URL, params={"q": term, "limit": 100})
+            data = response.json()
         except Exception as e:
             context.log.error(f"❌ Fetch failed for '{term}': {e}")
             state["last_run_status"] = "failed"
@@ -102,7 +84,7 @@ def create_resource(term: str, topic: str, resource_name: str, context: OpExecut
 
         if current_table_count < previous_count:
             context.log.info(
-                f"⚠️ Detected fewer rows in DuckDB table '{table_name}' ({current_table_count}) "
+                f"⚠️ Detected fewer rows in DuckDB table '{resource_name}' ({current_table_count}) "
                 f"than previous filtered count ({previous_count}). Forcing reload."
             )
         elif filtered_count == previous_count:
@@ -166,7 +148,7 @@ def openlibrary_books_asset(context: OpExecutionContext) -> bool:
         loaded_count = sum(1 for s in statuses if s == "success")
         context.log.info(f"✅ Number of resources loaded: {loaded_count}")
 
-        return bool(load_info)
+        return True
 
     except Exception as e:
         context.log.error(f"❌ Pipeline run failed: {e}")
@@ -176,6 +158,7 @@ def openlibrary_books_asset(context: OpExecutionContext) -> bool:
 @asset(deps=["openlibrary_books_asset"], group_name="OpenLibrary", tags={"source": "OpenLibrary"})
 def dbt_openlibrary_data(context: OpExecutionContext, openlibrary_books_asset: bool) -> None:
     """Runs the dbt command after loading the data from Geo API."""
+
     if not openlibrary_books_asset:
         context.log.warning(
             "\n⚠️  WARNING: DBT SKIPPED\n"
@@ -183,16 +166,18 @@ def dbt_openlibrary_data(context: OpExecutionContext, openlibrary_books_asset: b
             "🚫 Skipping dbt run.\n"
             "----------------------------------------"
         )
+        # Print all active threads
+        context.log.info(
+            f"🧵 Active threads: {[t.name for t in threading.enumerate()]}")
         return
 
-    DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
+    DBT_PROJECT_DIR = os.path.abspath("/workspaces/CamOnDagster/dbt")
     context.log.info(f"DBT Project Directory: {DBT_PROJECT_DIR}")
 
     start = time.time()
     try:
         result = subprocess.run(
-            "dbt build --select source:openlibrary+",
-            shell=True,
+            ["dbt", "build", "--select", "source:openlibrary+"],
             cwd=DBT_PROJECT_DIR,
             capture_output=True,
             text=True,

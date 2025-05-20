@@ -6,7 +6,6 @@ from pathlib import Path
 import dlt
 import time
 import subprocess
-from typing import Iterator, Dict, Any
 from dlt.sources.helpers.rest_client.paginators import JSONLinkPaginator
 from dlt.sources.helpers.rest_client.client import RESTClient
 

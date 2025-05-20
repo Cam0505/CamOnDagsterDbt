@@ -21,6 +21,7 @@ env/
 *.dagster/
 cam_on_dagster_dbt/assets/.dlt/
 cam_on_dagster_dbt/assets/.dlt/secrets.toml
+cam_on_dagster_dbt/assets/.dlt/config.toml
 
 # === Jupyter Notebooks ===
 .ipynb_checkpoints/

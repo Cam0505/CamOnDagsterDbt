@@ -93,10 +93,6 @@ def gsheet_finance_source(context: OpExecutionContext):
                     )
                     return
 
-            # Filter for new data
-            if state["latest_ts"]:
-                df = df[df['DateTime'] > pd.to_datetime(state["latest_ts"])]
-
             # Update state
             state.update({
                 "latest_ts": latest_gsheet_ts.isoformat(),
@@ -106,8 +102,7 @@ def gsheet_finance_source(context: OpExecutionContext):
             })
 
             context.log.info(f"Loading {len(df)} new records")
-            for record in df.to_dict('records'):
-                yield record
+            yield df.to_dict('records')
 
         except Exception as e:
             state["last_run_status"] = f"failed: {str(e)}"
