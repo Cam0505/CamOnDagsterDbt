@@ -2,8 +2,8 @@
 -- Model: Base_Beverage_openlibrary
 -- Description: Unioning Tables with Books seperated by Search and Filter term
 -- from the OpenLibrary API, the point of this is to test using both DLT State
--- & DuckDb connection to check for New API data (via DLT State) and deleted or
--- truncation data loss with DuckDB sql comparison with DLT State.
+-- & pipeline dataset to check for New API data (via DLT State) and deleted or
+-- truncation data loss with pipeline dataset comparison with DLT State.
 -- ------------------------------------------------------------------------------
 -- Change Log:
 -- Date       | Author   | Description

@@ -39,7 +39,7 @@ def get_existing_count(table_name: str, context) -> int:
         return 0  # Assume table doesn't exist yet
 
 
-def create_resource(term: str, topic: str, resource_name: str, context: OpExecutionContext):
+def create_resource(term: str, topic: str, resource_name: str, current_table_count: int, context: OpExecutionContext):
 
     @dlt.resource(name=resource_name, write_disposition="merge", primary_key="key")
     def resource_func() -> Iterator[Dict]:
@@ -48,7 +48,6 @@ def create_resource(term: str, topic: str, resource_name: str, context: OpExecut
             "last_run_status": None
         })
 
-        current_table_count = get_existing_count(resource_name, context)
         try:
             response = get(BASE_URL, params={"q": term, "limit": 100})
             data = response.json()
@@ -113,9 +112,9 @@ def create_resource(term: str, topic: str, resource_name: str, context: OpExecut
 
 
 @dlt.source
-def openlibrary_dim_source(context: OpExecutionContext):
+def openlibrary_dim_source(context: OpExecutionContext, current_counts: Dict[str, int]):
     for term, (topic, resource_name) in SEARCH_TOPICS.items():
-        yield create_resource(term, topic, resource_name, context)
+        yield create_resource(term, topic, resource_name, current_counts.get(resource_name, 0), context)
 
 
 @asset(compute_kind="python", group_name="OpenLibrary", tags={"source": "OpenLibrary"})
@@ -128,7 +127,16 @@ def openlibrary_books_asset(context: OpExecutionContext) -> bool:
         dataset_name="openlibrary_data"
     )
 
-    source = openlibrary_dim_source(context)
+    row_counts = pipeline.dataset().row_counts().df()
+    if row_counts is not None:
+        row_counts_dict = dict(
+            zip(row_counts["table_name"], row_counts["row_count"]))
+    else:
+        context.log.warning(
+            "⚠️ No tables found yet in dataset — assuming first run.")
+        row_counts_dict = {}
+
+    source = openlibrary_dim_source(context, row_counts_dict)
 
     try:
         load_info = pipeline.run(source)

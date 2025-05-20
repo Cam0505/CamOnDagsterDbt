@@ -1,17 +1,19 @@
 from dagster import asset, OpExecutionContext
 import os
-import requests
 from dotenv import load_dotenv
 import dlt
 import subprocess
-from typing import Dict
+from typing import Dict, Tuple
 from pathlib import Path
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 import json
 import time
+from dlt.sources.helpers import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+
 
 cities = {
     "Sydney": {"lat": -33.8688, "lng": 151.2093,
@@ -37,6 +39,7 @@ cities = {
     "Albany": {"lat": -35.02692, "lng": 117.88369,
                "timezone": "Australia/Perth"}
 }
+
 today = datetime.now(ZoneInfo("Australia/Sydney")).date()
 end_date = today - timedelta(days=2)
 # Last 3 years worth of data, don't need this now
@@ -81,28 +84,21 @@ def get_city_date_stats(context) -> Dict[str, Dict[str, date]]:
         return {}  # Assume table doesn't exist yet
 
 
-def get_weather_data(lat: float, lng: float, start_date: date, end_date: date, timezone: str, context: OpExecutionContext):
-    params = {
-        "latitude": lat,
-        "longitude": lng,
-        "start_date": start_date.strftime('%Y-%m-%d'),
-        "end_date": end_date.strftime('%Y-%m-%d'),
-        "daily": ",".join([
-            "temperature_2m_max", "temperature_2m_min", "temperature_2m_mean",
-            "precipitation_sum", "windspeed_10m_max", "windgusts_10m_max",
-            "sunshine_duration", "uv_index_max"
-        ]),
-        "timezone": timezone
-    }
-
-    try:
-        response = requests.get(BASE_URL, params=params, timeout=30)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        context.log.warning(
-            f"Failed to fetch weather data for ({lat}, {lng}) from {start_date} to {end_date}: {e}")
-        return None
+def get_weather_data(lat: float, lng: float, start_date: date, end_date: date, timezone: str):
+    return requests.get(BASE_URL,
+                        params={
+                            "latitude": lat,
+                            "longitude": lng,
+                            "start_date": start_date.strftime('%Y-%m-%d'),
+                            "end_date": end_date.strftime('%Y-%m-%d'),
+                            "daily": ",".join([
+                                "temperature_2m_max", "temperature_2m_min", "temperature_2m_mean",
+                                "precipitation_sum", "windspeed_10m_max", "windgusts_10m_max",
+                                "sunshine_duration", "uv_index_max"
+                            ]),
+                            "timezone": timezone
+                        }
+                        )
 
 
 def split_into_yearly_chunks(start_date: date, end_date: date):
@@ -114,6 +110,43 @@ def split_into_yearly_chunks(start_date: date, end_date: date):
         chunks.append((current, year_end))
         current = year_end + timedelta(days=1)
     return chunks
+
+
+def fetch_city_chunk_data(city: str, city_info: dict, city_start: date, end_date: date) -> Tuple[str, list]:
+    records = []
+    success = False
+    for chunk_start, chunk_end in split_into_yearly_chunks(city_start, end_date):
+        response = get_weather_data(
+            lat=city_info["lat"],
+            lng=city_info["lng"],
+            start_date=chunk_start,
+            end_date=chunk_end,
+            timezone=city_info["timezone"]
+        )
+        data = response.json()
+        if not data or "daily" not in data:
+            continue
+        daily_data = data["daily"]
+        for i in range(len(daily_data["time"])):
+            success = True
+            records.append({
+                "date": daily_data["time"][i],
+                "City": city,
+                "temperature_max": daily_data["temperature_2m_max"][i],
+                "temperature_min": daily_data["temperature_2m_min"][i],
+                "temperature_mean": daily_data["temperature_2m_mean"][i],
+                "precipitation_sum": daily_data["precipitation_sum"][i],
+                "windspeed_max": daily_data["windspeed_10m_max"][i],
+                "windgusts_max": daily_data["windgusts_10m_max"][i],
+                "sunshine_duration": daily_data["sunshine_duration"][i],
+                "uv_index_max": daily_data["uv_index_max"][i],
+                "location": {
+                    "lat": city_info["lat"],
+                    "lng": city_info["lng"]
+                },
+                "timestamp": datetime.now(ZoneInfo(city_info["timezone"])).replace(microsecond=0).isoformat()
+            })
+    return city, records if success else []
 
 
 @dlt.source
@@ -130,89 +163,68 @@ def openmeteo_source(cities: dict, base_start_date: date, end_date: date, contex
 
         city_stats = get_city_date_stats(context)
         all_dates = []
-        # context.log.info(f"Existing city stats: {json.dumps(city_stats, indent=2, default=str)}")
+        futures = {}
 
-        for city, city_info in cities.items():
-            city_start = base_start_date
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            for city, city_info in cities.items():
+                city_start = base_start_date
 
-            if city in city_stats:
-                max_date = city_stats[city]['max_date']
-                min_date = city_stats[city]['min_date']
-                # Whats being passed in
-                expected_days = (end_date - base_start_date).days + 1
-                # In the DB
-                existing_days = (max_date - min_date).days + 1
+                if city in city_stats:
+                    # Database Values
+                    max_date = city_stats[city]['max_date']
+                    min_date = city_stats[city]['min_date']
+                    # Whats being passed in
+                    expected_days = (end_date - base_start_date).days + 1
+                    # In the DB
+                    existing_days = (max_date - min_date).days + 1
 
-                if existing_days >= expected_days:
+                    if existing_days >= expected_days and max_date >= end_date:
+                        context.log.info(
+                            f"✅ Skipping {city}: full data available ({existing_days}/{expected_days})")
+                        state["city_status"][city] = "skipped"
+                        continue
+                    # Given the Database has data upto: max_date, you would start fetching from: max_date + timedelta(days=1)
+                    city_start = max(
+                        max_date + timedelta(days=1), base_start_date)
                     context.log.info(
-                        f"✅ Skipping {city}: full data available ({existing_days}/{expected_days})")
+                        f"🔄 Updating {city}: found {existing_days}/{(end_date - min_date).days + 1} days, starting from {city_start}"
+                    )
+
+                else:
+                    context.log.info(
+                        f"🆕 New city: {city}, fetching from {city_start}")
+                # If the new fetch date is beyond the hard limit (No newer data than 2 days ago, set as global var)
+                if city_start > end_date:
+                    context.log.info(
+                        f"📭 No missing data range to fetch for {city}")
                     state["city_status"][city] = "skipped"
                     continue
-                # Given the Database has data upto: max_date, you would start fetching from: max_date + timedelta(days=1)
-                city_start = max(max_date + timedelta(days=1), base_start_date)
-                context.log.info(
-                    f"🔄 Updating {city}: found {existing_days}/{expected_days} days, starting from {city_start}"
-                )
 
+                futures[executor.submit(
+                    fetch_city_chunk_data, city, city_info, city_start, end_date)] = city
+
+                for future in as_completed(futures):
+                    city, city_start = futures[future]
+                    records = future.result()[1]
+                    if records:
+                        for record in records:
+                            yield record
+                        state["city_status"][city] = "success"
+                        state["city_date"][city] = {
+                            "start": city_start.isoformat() if isinstance(city_start, date) else city_start,
+                            "end": end_date.isoformat() if isinstance(end_date, date) else end_date
+                        }
+                        all_dates.append(city_start)
+                        all_dates.append(end_date)
+                    else:
+                        state["city_status"][city] = "failed"
+
+            if all_dates:
+                state["last_run_date"]["Min"] = str(min(all_dates))
+                state["last_run_date"]["Max"] = str(max(all_dates))
+                state["last_run_status"] = "success"
             else:
-                context.log.info(
-                    f"🆕 New city: {city}, fetching from {city_start}")
-            # If the new fetch date is beyond the hard limit (No newer data than 2 days ago, set as global var)
-            if city_start > end_date:
-                context.log.info(
-                    f"📭 No missing data range to fetch for {city}")
-                state["city_status"][city] = "skipped"
-                continue
-
-            success = False
-            for chunk_start, chunk_end in split_into_yearly_chunks(city_start, end_date):
-                data = get_weather_data(
-                    lat=city_info["lat"],
-                    lng=city_info["lng"],
-                    start_date=chunk_start,
-                    end_date=chunk_end,
-                    timezone=city_info["timezone"],
-                    context=context
-                )
-                if not data or "daily" not in data:
-                    continue
-                daily_data = data["daily"]
-                for i in range(len(daily_data["time"])):
-                    success = True
-                    yield {
-                        "date": daily_data["time"][i],
-                        "City": city,
-                        "temperature_max": daily_data["temperature_2m_max"][i],
-                        "temperature_min": daily_data["temperature_2m_min"][i],
-                        "temperature_mean": daily_data["temperature_2m_mean"][i],
-                        "precipitation_sum": daily_data["precipitation_sum"][i],
-                        "windspeed_max": daily_data["windspeed_10m_max"][i],
-                        "windgusts_max": daily_data["windgusts_10m_max"][i],
-                        "sunshine_duration": daily_data["sunshine_duration"][i],
-                        "uv_index_max": daily_data["uv_index_max"][i],
-                        "location": {
-                            "lat": city_info["lat"],
-                            "lng": city_info["lng"]
-                        },
-                        "timestamp": datetime.now(ZoneInfo(city_info["timezone"])).replace(microsecond=0).isoformat()
-                    }
-            if success:
-                state["city_status"][city] = "success"
-                state["city_date"][city] = {
-                    "start": city_start.isoformat() if isinstance(city_start, date) else city_start,
-                    "end": end_date.isoformat() if isinstance(end_date, date) else end_date
-                }
-                all_dates.append(city_start)
-                all_dates.append(end_date)
-            else:
-                state["city_status"][city] = "failed"
-
-        if all_dates:
-            state["last_run_date"]["Min"] = str(min(all_dates))
-            state["last_run_date"]["Max"] = str(max(all_dates))
-            state["last_run_status"] = "success"
-        else:
-            state["last_run_status"] = "no_data"
+                state["last_run_status"] = "no_data"
     return weather_resource()
 
 
@@ -261,8 +273,8 @@ def openmeteo_asset(context: OpExecutionContext) -> bool:
 
 
 @asset(deps=["openmeteo_asset"], group_name="Open_Meteo", tags={"source": "Open_Meteo"})
-def dbt_meteo_data(context: OpExecutionContext, get_geo_data: bool) -> None:
-    """Runs the dbt command after loading the data from Geo API."""
+def dbt_meteo_data(context: OpExecutionContext, openmeteo_asset: bool) -> None:
+    """Runs the dbt command after loading the data from OpenMeteo API."""
 
     if not openmeteo_asset:
         context.log.warning(

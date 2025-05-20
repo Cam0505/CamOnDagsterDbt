@@ -1,16 +1,22 @@
-# definitions.py
+from cam_on_dagster_dbt.schedules import schedules
+from cam_on_dagster_dbt.sensors import camon_sensor
+from cam_on_dagster_dbt.jobs import open_meteo_job
+from cam_on_dagster_dbt.assets import openmeteo_asset, dbt_meteo_data
 from dagster import Definitions, define_asset_job
+from dotenv import load_dotenv
+import subprocess
+load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+# definitions.py
 
 # Import Rick and Morty assets and jobs (active)
-from cam_on_dagster_dbt.assets import rick_and_morty_asset, dbt_rick_and_morty_data
-from cam_on_dagster_dbt.jobs import RickandMorty_job
+# from cam_on_dagster_dbt.assets import rick_and_morty_asset, dbt_rick_and_morty_data
+# from cam_on_dagster_dbt.jobs import RickandMorty_job
 
 # Uncomment and import other assets/jobs as needed:
 
 # from cam_on_dagster_dbt.assets import camon_dbt_assets
 # from cam_on_dagster_dbt.assets import gsheet_finance_data, gsheet_dbt_command
 
-from cam_on_dagster_dbt.assets import openmeteo_asset, dbt_meteo_data
 
 # Beverages Assets
 # from cam_on_dagster_dbt.assets import dimension_data, beverage_fact_data, dbt_beverage_data
@@ -26,7 +32,6 @@ from cam_on_dagster_dbt.assets import openmeteo_asset, dbt_meteo_data
 
 # Jobs - uncomment as needed
 # from cam_on_dagster_dbt.jobs import gsheets_financial_with_dbt_job
-from cam_on_dagster_dbt.jobs import open_meteo_job
 # from cam_on_dagster_dbt.jobs import beverage_dim_job
 # from cam_on_dagster_dbt.jobs import meals_dim_job
 # from cam_on_dagster_dbt.jobs import geo_data_job
@@ -36,8 +41,6 @@ from cam_on_dagster_dbt.jobs import open_meteo_job
 # from cam_on_dagster_dbt.assets.youtube import youtube_pipeline
 # from cam_on_dagster_dbt.jobs import Youtube_Job
 
-from cam_on_dagster_dbt.sensors import camon_sensor
-from cam_on_dagster_dbt.schedules import schedules
 
 # Define the assets
 all_assets = [openmeteo_asset, dbt_meteo_data]
@@ -55,6 +58,7 @@ defs = Definitions(
 if __name__ == "__main__":
     try:
         result = open_meteo_job.execute_in_process()
-        print("open_meteo_job Job finished:", result.success)
+        # 🔧 Prevent hanging from anon tracker
+        print("open_meteo_job Job finished:", result)
     except Exception as e:
         print(f"Error executing job: {e}")

@@ -21,24 +21,7 @@ RESOURCE_CONFIG: dict[str, str] = {
 }
 
 
-def get_existing_count(table_name: str, context) -> int:
-    try:
-        pipeline = dlt.current.pipeline()
-        with pipeline.sql_client() as client:
-            result = client.execute_sql(
-                f"SELECT COUNT(*) FROM rick_and_morty_data.{table_name}")
-            count = result[0][0] if result else 0
-            context.log.info(
-                f"🔍 Existing row count for `{table_name}`: {count}")
-            return count
-    except Exception as e:
-        context.log.warning(
-            f"⚠️ Could not get count for {table_name}: {str(e)}")
-        return 0  # Assume table doesn't exist yet
-
-
-def make_resource(endpoint: str, primary_key: str):
-    table_name = endpoint
+def make_resource(table_name: str, primary_key: str, existing_count: int):
 
     @dlt.resource(name=table_name, write_disposition="merge", primary_key=primary_key)
     def _resource(context: OpExecutionContext):
@@ -47,7 +30,6 @@ def make_resource(endpoint: str, primary_key: str):
             "last_run_status": None
         })
 
-        existing_count = get_existing_count(table_name, context)
         client = RESTClient(
             base_url=f"{BASE_URL}/",
             paginator=JSONLinkPaginator(
@@ -57,7 +39,8 @@ def make_resource(endpoint: str, primary_key: str):
 
         # Only fetch first page to check count
         try:
-            response = client.session.get(f"{BASE_URL}/{endpoint}", timeout=15)
+            response = client.session.get(
+                f"{BASE_URL}/{table_name}", timeout=15)
             response.raise_for_status()
             first_page = response.json()
             info = first_page.get("info", {})
@@ -67,8 +50,7 @@ def make_resource(endpoint: str, primary_key: str):
                 f"❌ Failed to fetch API count for `{table_name}`: {e}")
             state["last_run_status"] = "failed"
             raise
-        context.log.info(
-            f"🔍 `{table_name}` API count: {new_count} (existing: {existing_count})")
+
         if existing_count < state["count"]:
             context.log.info(
                 f"⚠️ Table `{table_name}` row count dropped from {state['count']} to {existing_count}. Forcing reload.")
@@ -84,16 +66,16 @@ def make_resource(endpoint: str, primary_key: str):
         state["last_run_status"] = "success"
         context.log.info(
             f"📊 Loading `{table_name}` data from Rick and Morty API...")
-        for page in client.paginate(endpoint):
+        for page in client.paginate(table_name):
             yield page
 
     return _resource
 
 
 @dlt.source
-def rick_and_morty_source(context: OpExecutionContext):
+def rick_and_morty_source(context: OpExecutionContext, current_counts):
     for endpoint, primary_key in RESOURCE_CONFIG.items():
-        yield make_resource(endpoint, primary_key)(context)
+        yield make_resource(endpoint, primary_key, current_counts.get(endpoint, 0))(context)
 
 
 @asset(compute_kind="python", group_name="RickAndMorty", tags={"source": "RickAndMorty"})
@@ -107,9 +89,18 @@ def rick_and_morty_asset(context: OpExecutionContext) -> bool:
         dataset_name="rick_and_morty_data"
     )
 
-    source = rick_and_morty_source(context)
+    row_counts = pipeline.dataset().row_counts().df()
+    if row_counts is not None:
+        row_counts_dict = dict(
+            zip(row_counts["table_name"], row_counts["row_count"]))
+    else:
+        context.log.warning(
+            "⚠️ No tables found yet in dataset — assuming first run.")
+        row_counts_dict = {}
+
+    source = rick_and_morty_source(context, row_counts_dict)
     try:
-        load_info = pipeline.run(source)
+        pipeline.run(source)
 
         statuses = [source.state.get(resource, {}).get(
             "last_run_status") for resource in RESOURCE_CONFIG.keys()]
@@ -126,7 +117,7 @@ def rick_and_morty_asset(context: OpExecutionContext) -> bool:
         loaded_count = sum(1 for s in statuses if s == "success")
         context.log.info(f"✅ Number of resources loaded: {loaded_count}")
 
-        return bool(load_info)
+        return True
     except Exception as e:
         context.log.error(f"❌ Pipeline run failed: {e}")
         return False
