@@ -7,7 +7,6 @@ import dlt
 import time
 import subprocess
 from typing import Iterator, Dict, Any
-import duckdb
 from dlt.sources.helpers.rest_client.paginators import JSONLinkPaginator
 from dlt.sources.helpers.rest_client.client import RESTClient
 
@@ -24,30 +23,26 @@ RESOURCE_CONFIG: dict[str, str] = {
 
 
 def get_existing_count(table_name: str, context) -> int:
-    db_path = os.getenv("MOTHERDUCK")
-    if not db_path:
-        raise ValueError(
-            "Missing MOTHERDUCK in environment.")
-    if table_name not in RESOURCE_CONFIG.keys():
-        raise ValueError("Unauthorized access attempt.")
-
-    con = duckdb.connect(database=db_path)
     try:
-        result = con.execute(
-            f"SELECT COUNT(*) FROM rick_and_morty_data.{table_name}").fetchone()
-        return result[0] if result else 0
+        pipeline = dlt.current.pipeline()
+        with pipeline.sql_client() as client:
+            result = client.execute_sql(
+                f"SELECT COUNT(*) FROM rick_and_morty_data.{table_name}")
+            count = result[0][0] if result else 0
+            context.log.info(
+                f"🔍 Existing row count for `{table_name}`: {count}")
+            return count
     except Exception as e:
-        context.log.warn(f"Failed to get row count for `{table_name}`: {e}")
-        return 0  # Table might not exist yet
-    finally:
-        con.close()
+        context.log.warning(
+            f"⚠️ Could not get count for {table_name}: {str(e)}")
+        return 0  # Assume table doesn't exist yet
 
 
 def make_resource(endpoint: str, primary_key: str):
     table_name = endpoint
 
     @dlt.resource(name=table_name, write_disposition="merge", primary_key=primary_key)
-    def _resource(context: OpExecutionContext) -> Iterator[Dict]:
+    def _resource(context: OpExecutionContext):
         state = dlt.current.source_state().setdefault(table_name, {
             "count": 0,
             "last_run_status": None
@@ -60,9 +55,10 @@ def make_resource(endpoint: str, primary_key: str):
                 next_url_path="info.next"
             )
         )
+
         # Only fetch first page to check count
         try:
-            response = client.session.get(f"{BASE_URL}/{endpoint}")
+            response = client.session.get(f"{BASE_URL}/{endpoint}", timeout=15)
             response.raise_for_status()
             first_page = response.json()
             info = first_page.get("info", {})
@@ -72,7 +68,8 @@ def make_resource(endpoint: str, primary_key: str):
                 f"❌ Failed to fetch API count for `{table_name}`: {e}")
             state["last_run_status"] = "failed"
             raise
-
+        context.log.info(
+            f"🔍 `{table_name}` API count: {new_count} (existing: {existing_count})")
         if existing_count < state["count"]:
             context.log.info(
                 f"⚠️ Table `{table_name}` row count dropped from {state['count']} to {existing_count}. Forcing reload.")
