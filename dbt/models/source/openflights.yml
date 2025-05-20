@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: openflights
+    database: camondagster
+    schema: openflights
+    tables:
+      - name: airlines
+      - name: airports
+      - name: planes
+      - name: routes

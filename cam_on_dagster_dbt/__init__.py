@@ -18,6 +18,7 @@ from .assets import (
     openmeteo_asset,
     dbt_meteo_data,
     youtube_pipeline,
+    openflights_data,
 )
 from .jobs import (
     gsheets_financial_with_dbt_job,
@@ -29,6 +30,7 @@ from .jobs import (
     run_dbt_assets,
     open_meteo_job,
     Youtube_Job,
+    airline_job,
 )
 from .schedules import schedules
 from .sensors import camon_sensor
@@ -55,6 +57,7 @@ __all__ = [
     "openmeteo_asset",
     "dbt_meteo_data",
     "youtube_pipeline",
+    "openflights_data",
     # Jobs
     "gsheets_financial_with_dbt_job",
     "beverage_dim_job",
@@ -65,6 +68,7 @@ __all__ = [
     "run_dbt_assets",
     "open_meteo_job",
     "Youtube_Job",
+    "airline_job",
     # Others
     "schedules",
     "camon_sensor",

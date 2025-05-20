@@ -1,6 +1,7 @@
 from dagster import asset, OpExecutionContext
 import os
 import requests
+from dlt.sources.helpers import requests as dlt_requests
 from pathlib import Path
 from dotenv import load_dotenv
 import dlt
@@ -38,8 +39,8 @@ def fetch_and_extract(table: str) -> list:
     param, field = TABLE_PARAMS[table]
     url = f"https://www.thecocktaildb.com/api/json/v2/{API_KEY}/list.php?{param}"
 
-    response = requests.get(url)
-    response.raise_for_status()
+    response = dlt_requests.get(url)
+    response.raise_for_status()  # Raise exception on error
     data = response.json()
 
     # Find the first key containing a list of dicts
@@ -193,8 +194,7 @@ def beverage_fact_data(context, dimension_data: bool) -> bool:
                         f"No drinks returned in iteration {i+1}")
                     continue
 
-                for drink in drinks:
-                    yield drink
+                yield drinks
 
                 time.sleep(0.2)  # Prevent throttling
             except requests.RequestException as e:
