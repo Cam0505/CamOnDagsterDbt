@@ -9,15 +9,16 @@ from dagster import Definitions, define_asset_job
 # Uncomment and import other assets/jobs as needed:
 
 # from cam_on_dagster_dbt.assets import camon_dbt_assets
-# from cam_on_dagster_dbt.assets import gsheet_finance_data, gsheet_dbt_command
+from cam_on_dagster_dbt.assets import gsheet_finance_data, gsheet_dbt_command
 
 from cam_on_dagster_dbt.schedules import schedules
 from cam_on_dagster_dbt.sensors import camon_sensor
 # from cam_on_dagster_dbt.jobs import open_meteo_job
 # from cam_on_dagster_dbt.assets import openmeteo_asset, dbt_meteo_data
 
-from cam_on_dagster_dbt.jobs import airline_job
-from cam_on_dagster_dbt.assets import openflights_data
+# from cam_on_dagster_dbt.jobs import airline_job
+# from cam_on_dagster_dbt.assets import openflights_data
+
 # Beverages Assets
 # from cam_on_dagster_dbt.assets import dimension_data, beverage_fact_data, dbt_beverage_data
 
@@ -30,8 +31,11 @@ from cam_on_dagster_dbt.assets import openflights_data
 # GeoAPI Assets
 # from cam_on_dagster_dbt.assets import get_geo_data, dbt_geo_data
 
+# from cam_on_dagster_dbt.assets import uv_asset
+# from cam_on_dagster_dbt.jobs import uv_job
+
 # Jobs - uncomment as needed
-# from cam_on_dagster_dbt.jobs import gsheets_financial_with_dbt_job
+from cam_on_dagster_dbt.jobs import gsheets_financial_with_dbt_job
 # from cam_on_dagster_dbt.jobs import beverage_dim_job
 # from cam_on_dagster_dbt.jobs import meals_dim_job
 # from cam_on_dagster_dbt.jobs import geo_data_job
@@ -43,13 +47,13 @@ from cam_on_dagster_dbt.assets import openflights_data
 
 
 # Define the assets
-all_assets = [openflights_data]
+all_assets = [gsheet_finance_data, gsheet_dbt_command]
 
 # Register the job, sensor, and schedule in the Definitions
 defs = Definitions(
     assets=all_assets,
     # Register only the gsheets job
-    jobs=[airline_job],
+    jobs=[gsheets_financial_with_dbt_job],
     schedules=[schedules]  # ,
     # sensors=[camon_sensor]
 )
@@ -57,8 +61,7 @@ defs = Definitions(
 # Execute the job immediately
 if __name__ == "__main__":
     try:
-        result = airline_job.execute_in_process()
-        # 🔧 Prevent hanging from anon tracker
-        print("open_meteo_job Job finished:", result)
+        result = gsheets_financial_with_dbt_job.execute_in_process()
+        print("gsheets_financial_with_dbt_job Job finished:", result)
     except Exception as e:
         print(f"Error executing job: {e}")

@@ -1,6 +1,13 @@
 from dagster import job
+from dagster import define_asset_job
 from cam_on_dagster_dbt.assets.Gsheets import gsheet_finance_data, gsheet_dbt_command
 
+
+# gsheets_asset_job = define_asset_job(
+#     name="gsheets_asset_job",
+#     # Dagster auto-infers dependency on `gsheet_finance_data`
+#     selection=["gsheet_dbt_command"]
+# )
 
 @job(tags={"source": "gSheets"})
 def gsheets_financial_with_dbt_job():

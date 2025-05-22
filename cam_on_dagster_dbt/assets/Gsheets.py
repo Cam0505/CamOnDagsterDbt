@@ -28,7 +28,7 @@ def is_within_asx_hours() -> bool:
 
 
 @dlt.source
-def gsheet_finance_source(context: OpExecutionContext):
+def gsheet_finance_source(logger=None):
     @dlt.resource(write_disposition="append", name="gsheets_finance")
     def gsheet_finance_resource():
         # Initialize state within the source context
@@ -38,7 +38,8 @@ def gsheet_finance_source(context: OpExecutionContext):
             "processed_records": 0,
             "last_run_status": None
         })
-        context.log.info(f"Current state: {state}")
+        if logger:
+            logger.info(f"Current state: {state}")
 
         try:
             # Load data from Google Sheets
@@ -59,12 +60,14 @@ def gsheet_finance_source(context: OpExecutionContext):
 
             if not data:
                 state["last_run_status"] = "skipped_empty_data"
-                context.log.warning("No data found in sheet")
+                if logger:
+                    logger.warning("No data found in sheet")
                 return
 
             if "DateTime" not in data[0]:
                 state["last_run_status"] = "skipped_missing_datetime"
-                context.log.warning("DateTime column missing")
+                if logger:
+                    logger.warning("DateTime column missing")
                 return
 
             # Process data and track timestamps
@@ -72,7 +75,8 @@ def gsheet_finance_source(context: OpExecutionContext):
             df['DateTime'] = pd.to_datetime(
                 df['DateTime']).dt.tz_localize('UTC')
             latest_gsheet_ts = df['DateTime'].max()
-            context.log.info(f"Latest sheet timestamp: {latest_gsheet_ts}")
+            if logger:
+                logger.info(f"Latest data timestamp: {latest_gsheet_ts}")
 
             # Check for new data
             if state["latest_ts"]:
@@ -84,13 +88,14 @@ def gsheet_finance_source(context: OpExecutionContext):
                         "last_run": datetime.now(ZoneInfo("UTC")).isoformat(),
                         "last_run_status": "skipped_no_new_data"
                     })
-                    context.log.info(
-                        f"\n🔁 SKIPPED LOAD:\n"
-                        f"📅 GSheet timestamp: {latest_gsheet_ts}\n"
-                        f"📦 Buffered DLT state timestamp: {buffered_ts}\n"
-                        f"⏳ Reason: No new data within 30-minute window.\n"
-                        f"{'-'*45}"
-                    )
+                    if logger:
+                        logger.info(
+                            f"\n🔁 SKIPPED LOAD:\n"
+                            f"📅 GSheet timestamp: {latest_gsheet_ts}\n"
+                            f"📦 Buffered DLT state timestamp: {buffered_ts}\n"
+                            f"⏳ Reason: No new data within 30-minute window.\n"
+                            f"{'-'*45}"
+                        )
                     return
 
             # Update state
@@ -101,12 +106,14 @@ def gsheet_finance_source(context: OpExecutionContext):
                 "last_run_status": "success"
             })
 
-            context.log.info(f"Loading {len(df)} new records")
+            if logger:
+                logger.info(f"Loading {len(df)} new records")
             yield df.to_dict('records')
 
         except Exception as e:
             state["last_run_status"] = f"failed: {str(e)}"
-            context.log.error(f"Processing failed: {e}")
+            if logger:
+                logger.error(f"Processing failed: {e}")
             raise
 
     return gsheet_finance_resource
@@ -125,7 +132,7 @@ def gsheet_finance_data(context: OpExecutionContext) -> bool:
     )
 
     # Get the source
-    source = gsheet_finance_source(context)
+    source = gsheet_finance_source(context.log)
     try:
         load_info = pipeline.run(source)
 
@@ -171,7 +178,8 @@ def gsheet_dbt_command(context: OpExecutionContext, gsheet_finance_data: bool) -
             cwd=DBT_PROJECT_DIR,
             capture_output=True,
             text=True,
-            check=True
+            check=True,
+            timeout=120
         )
 
         duration = round(t.time() - start, 2)

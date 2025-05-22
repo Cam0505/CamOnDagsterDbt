@@ -3,6 +3,7 @@ from .open_meteo import openmeteo_asset, dbt_meteo_data
 from .Gsheets import gsheet_finance_data, gsheet_dbt_command
 from .youtube import youtube_pipeline
 from .airlines import openflights_data
+from .uv import uv_asset
 from .Beverages import (
     dimension_data,
     beverage_fact_data,
@@ -22,7 +23,6 @@ __all__ = [
     "camon_dbt_assets",
     "gsheet_finance_data",
     "gsheet_dbt_command",
-    "beverage_dim_data",
     "dimension_data",
     "beverage_fact_data",
     "dbt_beverage_data",
@@ -38,4 +38,7 @@ __all__ = [
     "dbt_rick_and_morty_data",
     "openmeteo_asset",
     "dbt_meteo_data",
+    "youtube_pipeline",
+    "openflights_data",
+    "uv_asset",
 ]

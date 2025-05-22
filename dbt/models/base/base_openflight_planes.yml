@@ -1,0 +1,13 @@
+version: 2
+models:
+- name: base_openflight_planes
+  description: ''
+  columns:
+  - name: plane_name
+    description: ''
+  - name: iata
+    description: ''
+  - name: icao
+    description: ''
+  - name: manufacturer
+    description: ''

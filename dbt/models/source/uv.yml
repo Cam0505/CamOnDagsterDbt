@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: uv
+    database: camondagster
+    schema: uv_data
+
+    loaded_at_field: timestamp
+
+    tables:
+    # Alcoholic Type
+      - name: uv_index
+        freshness:
+          warn_after: {count: 3, period: day}  # Warn if the data is older than 14 days
+          error_after: {count: 9, period: day}  # Error if the data is older than 21 days

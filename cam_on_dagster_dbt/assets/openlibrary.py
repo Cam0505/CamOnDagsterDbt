@@ -23,22 +23,6 @@ SEARCH_TOPICS: dict[str, list[str]] = {
 }
 
 
-def get_existing_count(table_name: str, context) -> int:
-    try:
-        pipeline = dlt.current.pipeline()
-        with pipeline.sql_client() as client:
-            result = client.execute_sql(
-                f"SELECT COUNT(*) FROM openlibrary_data.{table_name}")
-            count = result[0][0] if result else 0
-            context.log.info(
-                f"🔍 Existing row count for `{table_name}`: {count}")
-            return count
-    except Exception as e:
-        context.log.warning(
-            f"⚠️ Could not get count for {table_name}: {str(e)}")
-        return 0  # Assume table doesn't exist yet
-
-
 def create_resource(term: str, topic: str, resource_name: str, current_table_count: int, context: OpExecutionContext):
 
     @dlt.resource(name=resource_name, write_disposition="merge", primary_key="key")

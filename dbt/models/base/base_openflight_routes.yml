@@ -1,0 +1,15 @@
+version: 2
+models:
+- name: base_openflight_routes
+  description: ''
+  columns:
+  - name: airline_id
+    description: ''
+  - name: source_airport_iata
+    description: ''
+  - name: destination_airport_iata
+    description: ''
+  - name: stops
+    description: ''
+  - name: equipment
+    description: ''

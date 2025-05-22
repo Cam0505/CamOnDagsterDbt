@@ -1,4 +1,40 @@
-SELECT name, 
+SELECT name as plane_name, 
 NULLIF(iata, '\N') as iata,
-NULLIF(icao, '\N') as icao
+NULLIF(icao, '\N') as icao,
+CASE
+            WHEN name ILIKE 'Airbus%' THEN 'Airbus'
+            WHEN name ILIKE 'Boeing%' THEN 'Boeing'
+            WHEN name ILIKE 'Antonov%' THEN 'Antonov'
+            WHEN name ILIKE 'Bombardier%' THEN 'Bombardier'
+            WHEN name ILIKE 'Embraer%' THEN 'Embraer'
+            WHEN name ILIKE 'Cessna%' THEN 'Cessna'
+            WHEN name ILIKE 'De Havilland%' THEN 'De Havilland'
+            WHEN name ILIKE 'McDonnell Douglas%' THEN 'McDonnell Douglas'
+            WHEN name ILIKE 'British Aerospace%' THEN 'British Aerospace'
+            WHEN name ILIKE 'Dassault%' THEN 'Dassault'
+            WHEN name ILIKE 'Fokker%' THEN 'Fokker'
+            WHEN name ILIKE 'Lockheed%' THEN 'Lockheed'
+            WHEN name ILIKE 'Tupolev%' THEN 'Tupolev'
+            WHEN name ILIKE 'Ilyushin%' THEN 'Ilyushin'
+            WHEN name ILIKE 'Gulfstream%' OR name ILIKE 'Gulfstream/Rockwell%' THEN 'Gulfstream'
+            WHEN name ILIKE 'Canadair%' THEN 'Canadair'
+            WHEN name ILIKE 'BAe%' THEN 'British Aerospace (BAe)'
+            WHEN name ILIKE 'Avro%' THEN 'Avro'
+            WHEN name ILIKE 'Shorts%' THEN 'Shorts'
+            WHEN name ILIKE 'Fairchild%' THEN 'Fairchild Dornier'
+            WHEN name ILIKE 'Aerospatiale%' THEN 'Aerospatiale'
+            WHEN name ILIKE 'Pilatus%' THEN 'Pilatus'
+            WHEN name ILIKE 'Piper%' THEN 'Piper'
+            WHEN name ILIKE 'Sikorsky%' THEN 'Sikorsky'
+            WHEN name ILIKE 'Learjet%' THEN 'Learjet'
+            WHEN name ILIKE 'COMAC%' THEN 'COMAC'
+            WHEN name ILIKE 'Saab%' THEN 'Saab'
+            WHEN name ILIKE 'Partenavia%' THEN 'Partenavia'
+            WHEN name ILIKE 'NAMC%' THEN 'NAMC'
+            WHEN name ILIKE 'Beechcraft%' THEN 'Beechcraft'
+            WHEN name ILIKE 'Harbin%' THEN 'Harbin'
+            WHEN name ILIKE 'Bell%' THEN 'Bell'
+            WHEN name ILIKE 'Hawker Siddeley%' THEN 'Hawker Siddeley'
+            ELSE 'Other'
+        END AS manufacturer
 FROM {{ source("openflights", "planes") }}

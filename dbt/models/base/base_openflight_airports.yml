@@ -1,0 +1,29 @@
+version: 2
+models:
+- name: base_openflight_airports
+  description: ''
+  columns:
+  - name: airport_id
+    description: ''
+  - name: name
+    description: ''
+  - name: city
+    description: ''
+  - name: country
+    description: ''
+  - name: iata
+    description: ''
+  - name: icao
+    description: ''
+  - name: latitude
+    description: ''
+  - name: longitude
+    description: ''
+  - name: altitude
+    description: ''
+  - name: timezone
+    description: ''
+  - name: dst
+    description: ''
+  - name: database_time_zone
+    description: ''

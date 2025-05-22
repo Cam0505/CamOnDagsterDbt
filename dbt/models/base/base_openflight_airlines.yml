@@ -1,0 +1,17 @@
+version: 2
+models:
+- name: base_openflight_airlines
+  description: ''
+  columns:
+  - name: airline_id
+    description: ''
+  - name: airline_name
+    description: ''
+  - name: icao
+    description: ''
+  - name: callsign
+    description: ''
+  - name: country
+    description: ''
+  - name: active
+    description: ''
