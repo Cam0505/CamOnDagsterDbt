@@ -1,4 +1,4 @@
-from .dbt_assets import camon_dbt_assets
+from .dbt_assets import camon_dbt_assets, DBT_PROJECT_DIR
 from .open_meteo import openmeteo_asset, dbt_meteo_data
 from .Gsheets import gsheet_finance_data, gsheet_dbt_command
 from .youtube import youtube_pipeline
@@ -41,4 +41,5 @@ __all__ = [
     "youtube_pipeline",
     "openflights_data",
     "uv_asset",
+    "DBT_PROJECT_DIR",
 ]

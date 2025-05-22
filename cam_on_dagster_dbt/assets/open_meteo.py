@@ -17,27 +17,35 @@ load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
 
 cities = {
     "Sydney": {"lat": -33.8688, "lng": 151.2093,
-               "timezone": "Australia/Sydney"},
+               "timezone": "Australia/Sydney", "country": "Australia"},
     "Melbourne": {"lat": -37.8136, "lng": 144.9631,
-                  "timezone": "Australia/Melbourne"},
+                  "timezone": "Australia/Melbourne", "country": "Australia"},
     "Brisbane": {"lat": -27.4698, "lng": 153.0251,
-                 "timezone": "Australia/Brisbane"},
+                 "timezone": "Australia/Brisbane", "country": "Australia"},
     "Perth": {"lat": -31.9505, "lng": 115.8605,
-              "timezone": "Australia/Perth"},
+              "timezone": "Australia/Perth", "country": "Australia"},
     "Adelaide": {"lat": -34.9285, "lng": 138.6007,
-                 "timezone": "Australia/Adelaide"},
+                 "timezone": "Australia/Adelaide", "country": "Australia"},
     "Canberra": {"lat": -35.2809,
-                 "lng": 149.1300, "timezone": "Australia/Sydney"},
+                 "lng": 149.1300, "timezone": "Australia/Sydney", "country": "Australia"},
     "Hobart": {"lat": -42.8821, "lng": 147.3272,
-               "timezone": "Australia/Hobart"},
+               "timezone": "Australia/Hobart", "country": "Australia"},
     "Darwin": {"lat": -12.4634,
-               "lng": 130.8456, "timezone": "Australia/Darwin"},
+               "lng": 130.8456, "timezone": "Australia/Darwin", "country": "Australia"},
     "Cairns": {"lat": -16.92366, "lng": 145.76613,
-               "timezone": "Australia/Brisbane"},
+               "timezone": "Australia/Brisbane", "country": "Australia"},
     "Alice Springs": {"lat": -23.697479, "lng": 133.883621,
-                      "timezone": "Australia/Darwin"},
+                      "timezone": "Australia/Darwin", "country": "Australia"},
     "Albany": {"lat": -35.02692, "lng": 117.88369,
-               "timezone": "Australia/Perth"}
+               "timezone": "Australia/Perth", "country": "Australia"},
+    "Palmerston North": {"lat": -40.3563556918218, "lng": 175.61113357543945,
+                         "timezone": "Pacific/Auckland", "country": "New Zealand"},
+    "Wellington": {"lat": -41.2865, "lng": 174.7762,
+                   "timezone": "Pacific/Auckland", "country": "New Zealand"},
+    "Auckland": {"lat": -36.8485, "lng": 174.7633,
+                 "timezone": "Pacific/Auckland", "country": "New Zealand"},
+    "Christchurch": {"lat": -43.5321, "lng": 172.6362,
+                     "timezone": "Pacific/Auckland", "country": "New Zealand"}
 }
 
 today = datetime.now(ZoneInfo("Australia/Sydney")).date()
@@ -204,18 +212,20 @@ def openmeteo_source(cities: dict, base_start_date: date, end_date: date, contex
                     fetch_city_chunk_data, city, city_info, city_start, end_date)] = city
 
                 for future in as_completed(futures):
-                    city, city_start = futures[future]
+                    city = futures[future]
                     records = future.result()[1]
                     if records:
                         for record in records:
                             yield record
                         state["city_status"][city] = "success"
                         state["city_date"][city] = {
-                            "start": city_start.isoformat() if isinstance(city_start, date) else city_start,
-                            "end": end_date.isoformat() if isinstance(end_date, date) else end_date
+                            "start": records[0]["date"],
+                            "end": records[-1]["date"]
                         }
-                        all_dates.append(city_start)
-                        all_dates.append(end_date)
+                        all_dates.append(
+                            date.fromisoformat(records[0]["date"]))
+                        all_dates.append(
+                            date.fromisoformat(records[-1]["date"]))
                     else:
                         state["city_status"][city] = "failed"
 
