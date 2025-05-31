@@ -1,5 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.GeoAPI import get_geo_data, dbt_geo_data
+from dagster_cam.assets.GeoAPI import get_geo_data, dbt_geo_data
 
 
 @job(tags={"source": "Geo"})

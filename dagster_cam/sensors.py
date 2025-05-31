@@ -1,5 +1,5 @@
 from dagster import RunRequest, SensorDefinition
-from .jobs.dbt_job import run_dbt_assets
+from dagster_cam.jobs.dbt_job import run_dbt_assets
 
 camon_sensor = SensorDefinition(
     name="cam_sensor",

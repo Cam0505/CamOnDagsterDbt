@@ -1,5 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.rick_and_morty import rick_and_morty_asset, dbt_rick_and_morty_data
+from dagster_cam.assets.rick_and_morty import rick_and_morty_asset, dbt_rick_and_morty_data
 
 
 @job(tags={"source": "RickAndMorty"})

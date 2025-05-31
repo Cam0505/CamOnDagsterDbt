@@ -1,5 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.uv import uv_asset
+from dagster_cam.assets.uv import uv_asset
 
 
 @job(tags={"source": "UV"})

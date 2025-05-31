@@ -1,6 +1,6 @@
 from dagster import job
 from dagster import define_asset_job
-from cam_on_dagster_dbt.assets.Gsheets import gsheet_finance_data, gsheet_dbt_command
+from dagster_cam.assets.Gsheets import gsheet_finance_data, gsheet_dbt_command
 
 
 # gsheets_asset_job = define_asset_job(

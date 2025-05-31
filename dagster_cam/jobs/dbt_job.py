@@ -1,5 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.dbt_assets import camon_dbt_assets
+from dagster_cam.assets.dbt_assets import camon_dbt_assets
 
 
 # Define job for DBT assets

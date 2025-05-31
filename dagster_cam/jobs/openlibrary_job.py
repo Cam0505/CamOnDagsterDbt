@@ -1,5 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.openlibrary import openlibrary_books_asset, dbt_openlibrary_data
+from dagster_cam.assets.openlibrary import openlibrary_books_asset, dbt_openlibrary_data
 
 
 @job(tags={"source": "OpenLibrary"})

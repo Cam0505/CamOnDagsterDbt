@@ -1,5 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.Beverages import dimension_data, beverage_fact_data, dbt_beverage_data
+from dagster_cam.assets.Beverages import dimension_data, beverage_fact_data, dbt_beverage_data
 
 
 @job(tags={"source": "Beverages"})

@@ -1,5 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.airlines import openflights_data
+from dagster_cam.assets.airlines import openflights_data
 
 
 @job

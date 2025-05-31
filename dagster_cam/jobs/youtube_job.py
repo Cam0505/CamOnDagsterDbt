@@ -1,5 +1,5 @@
 from dagster import job
-from cam_on_dagster_dbt.assets.youtube import youtube_pipeline
+from dagster_cam.assets.youtube import youtube_pipeline
 
 
 @job(tags={"source": "Youtube"})

@@ -1,9 +1,9 @@
 
 # from cam_on_dagster_dbt.jobs import gsheets_financial_with_dbt_job
-from cam_on_dagster_dbt.assets import openmeteo_asset, dbt_meteo_data
-from cam_on_dagster_dbt.jobs import open_meteo_job
-from cam_on_dagster_dbt.sensors import camon_sensor
-from cam_on_dagster_dbt.schedules import schedules
+from dagster_cam.assets import openmeteo_asset, dbt_meteo_data
+from dagster_cam.jobs import open_meteo_job
+from dagster_cam.sensors import camon_sensor
+from dagster_cam.schedules import schedules
 # from cam_on_dagster_dbt.assets import gsheet_finance_data, gsheet_dbt_command
 from dotenv import load_dotenv
 import os
@@ -11,7 +11,7 @@ from dagster_duckdb_pandas import DuckDBPandasIOManager
 from dagster import Definitions, define_asset_job
 from dagster_dbt import DbtCliResource
 
-from cam_on_dagster_dbt.assets import DBT_PROJECT_DIR
+from dagster_cam.assets import DBT_PROJECT_DIR
 
 MotherDuck = os.getenv("MD")
 if not MotherDuck:
