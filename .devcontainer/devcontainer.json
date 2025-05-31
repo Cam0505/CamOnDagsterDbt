@@ -10,7 +10,7 @@
     "--memory=4g",
     "--init"
   ],
-  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt && (cd dbt && dbt deps)",
+  "postCreateCommand": "echo 'set -a && [ -f /workspaces/CamOnDagster/.env ] && source /workspaces/CamOnDagster/.env && set +a' >> ~/.bashrc",
   "remoteUser": "vscode",
   "customizations": {
     "vscode": {
@@ -21,11 +21,13 @@
       },
       "extensions": [
         "ms-python.python",
+        "ms-python.vscode-pylance",
         "dbt-labs.dbt"
       ]
     }
   },
   "containerEnv": {
-    "PYTHONPATH": "/workspaces/CamOnDagster"
+    "PYTHONPATH": "/workspaces/CamOnDagster",
+    "ENV_FILE": "${containerWorkspaceFolder}/.env"
   }
 }
