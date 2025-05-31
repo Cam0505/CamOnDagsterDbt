@@ -3,9 +3,12 @@ version: 2
 sources:
   - name: gsheets
     database: camondagster
-    schema: google_sheets_data
+    schema: public
     tables:
-      - name: gsheets_finance
+      - name: gsheet_finance_data
+        meta:
+          dagster:
+            asset_key: ["gsheet_finance_data"]
         loaded_at_field: date_time
         description: 'Gsheets Financial Data Source'
         freshness:

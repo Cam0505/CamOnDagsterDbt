@@ -1,7 +1,7 @@
 from .assets import (
     camon_dbt_assets,
     gsheet_finance_data,
-    gsheet_dbt_command,
+    dbt_models,
     get_geo_data,
     dbt_geo_data,
     openlibrary_books_asset,
@@ -42,7 +42,7 @@ __all__ = [
     # Assets
     "camon_dbt_assets",
     "gsheet_finance_data",
-    "gsheet_dbt_command",
+    "dbt_models",
     "get_geo_data",
     "dbt_geo_data",
     "openlibrary_books_asset",

@@ -1,16 +1,15 @@
-
-# from dagster_cam.jobs import gsheets_financial_with_dbt_job
+from dagster_cam.jobs import gsheets_financial_with_dbt_job
 # from dagster_cam.assets import openmeteo_asset, dbt_meteo_data
 # from dagster_cam.jobs import open_meteo_job
-from dagster_cam.jobs import openlibrary_job
-from dagster_cam.assets import openlibrary_books_asset, openlibrary_subjects_asset, dbt_openlibrary_data
+# from dagster_cam.jobs import openlibrary_job
+# from dagster_cam.assets import openlibrary_books_asset, openlibrary_subjects_asset, dbt_openlibrary_data
 from dagster_cam.sensors import camon_sensor
 from dagster_cam.schedules import schedules
-# from dagster_cam.assets import gsheet_finance_data, gsheet_dbt_command
+from dagster_cam.assets import gsheet_finance_data, dbt_models
 from dotenv import load_dotenv
 import os
 from dagster_duckdb_pandas import DuckDBPandasIOManager
-from dagster import Definitions, define_asset_job
+from dagster import Definitions
 from dagster_dbt import DbtCliResource
 
 from dagster_cam.assets import DBT_PROJECT_DIR
@@ -58,14 +57,13 @@ if not MotherDuck:
 
 
 # Define the assets
-all_assets = [openlibrary_books_asset,
-              openlibrary_subjects_asset, dbt_openlibrary_data]
+all_assets = [gsheet_finance_data, dbt_models]
 
 # Register the job, sensor, and schedule in the Definitions
 defs = Definitions(
     assets=all_assets,
     # Register only the gsheets job
-    jobs=[openlibrary_job],
+    jobs=[gsheets_financial_with_dbt_job],
     schedules=[schedules]  # ,
     # sensors=[camon_sensor]
     , resources={
@@ -77,11 +75,13 @@ defs = Definitions(
 # Execute the job immediately
 if __name__ == "__main__":
     try:
-        result = openlibrary_job.execute_in_process(
+        job = defs.get_job_def("gsheets_financial_with_dbt_job")
+        result = job.execute_in_process(
             resources={
+                "io_manager": DuckDBPandasIOManager(database=MotherDuck),
                 "dbt": DbtCliResource(project_dir=DBT_PROJECT_DIR, profiles_dir=DBT_PROJECT_DIR),
             }
         )
-        print("openlibrary_job Job finished:", result)
+        print("gsheets_financial_with_dbt_job Job finished:", result)
     except Exception as e:
         print(f"Error executing job: {e}")
