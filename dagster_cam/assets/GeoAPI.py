@@ -1,35 +1,19 @@
 from dagster import asset, OpExecutionContext
 import os
 from dotenv import load_dotenv
-from pathlib import Path
 import dlt
-import time
-import subprocess
+from dlt.pipeline.exceptions import PipelineNeverRan
+from dlt.destinations.exceptions import DatabaseUndefinedRelation
 import json
 from dlt.sources.helpers.requests import get
+from path_config import ENV_FILE, DLT_PIPELINE_DIR
 
-load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+load_dotenv(dotenv_path=ENV_FILE)
 COUNTRIES = ["AU", "NZ", "GB", "CA"]
 
 
-def get_existing_count(country_code: str, context) -> int:
-    try:
-        pipeline = dlt.current.pipeline()
-        with pipeline.sql_client() as client:
-            result = client.execute_sql(
-                f"SELECT COUNT(*) FROM geo_data.geo_cities WHERE country_code = '{country_code}'")
-            count = result[0][0] if result else 0
-            context.log.info(
-                f"🔍 Existing row count for `{country_code}`: {count}")
-            return count
-    except Exception as e:
-        context.log.warning(
-            f"⚠️ Could not get count for {country_code}: {str(e)}")
-        return 0  # Assume table doesn't exist yet
-
-
 @dlt.source
-def geo_source(context: OpExecutionContext):
+def geo_source(context: OpExecutionContext, row_counts_dict: dict):
     @dlt.resource(name="geo_cities", write_disposition="merge", primary_key="city_id")
     def cities():
         # Initialize state at the start of each run
@@ -88,18 +72,14 @@ def geo_source(context: OpExecutionContext):
                     f"Failed to fetch cities for {country_code}: {e}")
                 state["country_status"][country_code] = "failed"
                 raise
-            try:
-                database_rowcount = get_existing_count(country_code, context)
-            except Exception as e:
-                context.log.error(f"Failed to connect for {country_code}: {e}")
-                state["country_status"][country_code] = "database_error"
-                raise
+
+            database_rowcount = row_counts_dict.get(country_code, 0)
 
             current_count = len(cities_data)
 
             previous_count = state["processed_records"].get(country_code, 0)
 
-            if database_rowcount < previous_count:
+            if database_rowcount < previous_count or database_rowcount == 0:
                 context.log.info(
                     f"⚠️ GeoAPI data for `{country_code}` row count dropped from {previous_count} to {database_rowcount}. Forcing reload.")
                 state["country_status"][country_code] = "database_row_count"
@@ -155,12 +135,36 @@ def get_geo_data(context: OpExecutionContext) -> bool:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="geo_cities_pipeline",
-        destination=os.getenv("DLT_DESTINATION", "duckdb"),
+        destination=os.getenv("DLT_DESTINATION", "motherduck"),
+        pipelines_dir=str(DLT_PIPELINE_DIR),
         dataset_name="geo_data",
         dev_mode=False
     )
 
-    source = geo_source(context)
+    try:
+        dataset = pipeline.dataset()["geo_cities"].df()
+        if dataset is not None:
+            row_counts = dataset.groupby(
+                "country_code").size().reset_index(name="count")
+            context.log.info(f"Grouped Row Counts:\n{row_counts}")
+    except PipelineNeverRan:
+        context.log.warning(
+            "⚠️ No previous runs found for this pipeline. Assuming first run.")
+        row_counts = None
+    except DatabaseUndefinedRelation:
+        context.log.warning(
+            "⚠️ Table Doesn't Exist. Assuming truncation.")
+        row_counts = None
+
+    if row_counts is not None:
+        row_counts_dict = dict(
+            zip(row_counts["country_code"], row_counts["count"]))
+    else:
+        context.log.warning(
+            "⚠️ No tables found yet in dataset — assuming first run.")
+        row_counts_dict = {}
+
+    source = geo_source(context, row_counts_dict=row_counts_dict)
     try:
         load_info = pipeline.run(source)
 
@@ -187,7 +191,8 @@ def get_geo_data(context: OpExecutionContext) -> bool:
         return False
 
 
-@asset(deps=["get_geo_data"], group_name="Geo", tags={"source": "Geo"})
+@asset(deps=["get_geo_data"], group_name="Geo",
+       tags={"source": "Geo"}, required_resource_keys={"dbt"})
 def dbt_geo_data(context: OpExecutionContext, get_geo_data: bool) -> None:
     """Runs the dbt command after loading the data from Geo API."""
 
@@ -200,22 +205,15 @@ def dbt_geo_data(context: OpExecutionContext, get_geo_data: bool) -> None:
         )
         return
 
-    DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
-    context.log.info(f"DBT Project Directory: {DBT_PROJECT_DIR}")
-
-    start = time.time()
     try:
-        result = subprocess.run(
-            "dbt build --select source:geo+",
-            shell=True,
-            cwd=DBT_PROJECT_DIR,
-            capture_output=True,
-            text=True,
-            check=True
+        invocation = context.resources.dbt.cli(
+            ["build", "--select", "source:geo+"],
+            context=context
         )
-        duration = round(time.time() - start, 2)
-        context.log.info(f"dbt build completed in {duration}s")
-        context.log.info(result.stdout)
-    except subprocess.CalledProcessError as e:
-        context.log.error(f"dbt build failed:\n{e.stdout}\n{e.stderr}")
+
+        # Wait for dbt to finish and get the full stdout log
+        invocation.wait()
+        return
+    except Exception as e:
+        context.log.error(f"dbt build failed:\n{e}")
         raise

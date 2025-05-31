@@ -2,13 +2,13 @@ from dagster import asset, OpExecutionContext
 import os
 import requests
 from dlt.sources.helpers import requests as dlt_requests
-from pathlib import Path
 from dotenv import load_dotenv
 import dlt
 import time
-import subprocess
+from path_config import ENV_FILE, DLT_PIPELINE_DIR
 
-load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+
+load_dotenv(dotenv_path=ENV_FILE)
 TABLE_PARAMS = {
     "beverages": ("c=list", "strCategory"),
     "glasses": ("g=list", "strGlass"),
@@ -148,6 +148,7 @@ def dimension_data(context) -> bool:
         pipeline_name="beverage_pipeline",
         destination=os.getenv("DLT_DESTINATION", "duckdb"),
         dataset_name="beverage_data",
+        pipelines_dir=str(DLT_PIPELINE_DIR),
         dev_mode=False
     )
 
@@ -211,8 +212,9 @@ def beverage_fact_data(context, dimension_data: bool) -> bool:
     try:
         pipeline = dlt.pipeline(
             pipeline_name="beverage_pipeline",
-            destination=os.getenv("DLT_DESTINATION", "duckdb"),
+            destination=os.getenv("DLT_DESTINATION", "motherduck"),
             dataset_name="beverage_data",
+            pipelines_dir=str(DLT_PIPELINE_DIR),
             dev_mode=False
         )
 
@@ -225,7 +227,9 @@ def beverage_fact_data(context, dimension_data: bool) -> bool:
         raise
 
 
-@asset(deps=["beverage_fact_data"], group_name="Beverages", tags={"source": "Beverages"})
+@asset(deps=["beverage_fact_data"], group_name="Beverages",
+       tags={"source": "Beverages"},
+       required_resource_keys={"dbt"})
 def dbt_beverage_data(context: OpExecutionContext, beverage_fact_data: bool):
     """Runs the dbt command after loading the data from Beverage API."""
     # return False
@@ -237,20 +241,16 @@ def dbt_beverage_data(context: OpExecutionContext, beverage_fact_data: bool):
             "----------------------------------------"
         )
         return False
-    DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
-    context.log.info(f"DBT Project Directory: {DBT_PROJECT_DIR}")
 
-    result = subprocess.run(
-        "dbt build --select source:beverages+",
-        shell=True,
-        cwd=DBT_PROJECT_DIR,
-        capture_output=True,
-        text=True
-    )
+    try:
+        invocation = context.resources.dbt.cli(
+            ["build", "--select", "source:beverages+"],
+            context=context
+        )
 
-    context.log.info(result.stdout)
-    if result.stderr:
-        context.log.error(result.stderr)
-
-    if result.returncode != 0:
-        raise Exception(f"dbt build failed with code {result.returncode}")
+        # Wait for dbt to finish and get the full stdout log
+        invocation.wait()
+        return
+    except Exception as e:
+        context.log.error(f"dbt build failed:\n{e}")
+        raise

@@ -1,18 +1,19 @@
 from dagster import asset, OpExecutionContext
 import os
+import pandas as pd
 from dotenv import load_dotenv
+from dlt.pipeline.exceptions import PipelineNeverRan
+from dlt.destinations.exceptions import DatabaseUndefinedRelation
 import dlt
-import subprocess
 from typing import Dict, Tuple
-from pathlib import Path
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 import json
-import time
 from dlt.sources.helpers import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from path_config import ENV_FILE, DLT_PIPELINE_DIR
 
-load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+load_dotenv(dotenv_path=ENV_FILE)
 
 
 cities = {
@@ -50,8 +51,8 @@ cities = {
 
 today = datetime.now(ZoneInfo("Australia/Sydney")).date()
 end_date = today - timedelta(days=2)
-# Last 3 years worth of data, don't need this now
-start_date = end_date - timedelta(days=3 * 365)
+# Set start_date to 1st of January 2021
+start_date = date(2021, 1, 1)
 
 BASE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
@@ -60,36 +61,6 @@ def json_converter(o):
     if isinstance(o, date):
         return o.isoformat()
     return str(o)
-
-
-def get_city_date_stats(context) -> Dict[str, Dict[str, date]]:
-    try:
-        pipeline = dlt.current.pipeline()
-        with pipeline.sql_client() as client:
-            result = client.execute_sql("""
-            SELECT
-                City,
-                MIN(date::date) as min_date,
-                MAX(date::date) as max_date,
-                COUNT(*) as count
-            FROM weather_data.daily_weather
-            GROUP BY City""")
-            if not result:
-                context.log.info("No results returned from SQL query.")
-                return {}
-
-            return {
-                row[0]: {
-                    "min_date": row[1],
-                    "max_date": row[2],
-                    "count": row[3]
-                }
-                for row in result
-            }
-    except Exception as e:
-        context.log.warning(
-            f"⚠️ Could not return query data: {str(e)}")
-        return {}  # Assume table doesn't exist yet
 
 
 def get_weather_data(lat: float, lng: float, start_date: date, end_date: date, timezone: str):
@@ -120,7 +91,7 @@ def split_into_yearly_chunks(start_date: date, end_date: date):
     return chunks
 
 
-def fetch_city_chunk_data(city: str, city_info: dict, city_start: date, end_date: date) -> Tuple[str, list]:
+def fetch_city_chunk_data(city: str, city_info: dict, city_start: date, end_date: date, context) -> Tuple[str, list]:
     records = []
     success = False
     for chunk_start, chunk_end in split_into_yearly_chunks(city_start, end_date):
@@ -131,14 +102,24 @@ def fetch_city_chunk_data(city: str, city_info: dict, city_start: date, end_date
             end_date=chunk_end,
             timezone=city_info["timezone"]
         )
+        response.raise_for_status()
+        if response.status_code != 200:
+            context.log.error(
+                f"🌐 Failed to fetch data for {city}: {response.status_code} {response.text}")
+            continue
         data = response.json()
         if not data or "daily" not in data:
+            context.log.warning(
+                f"⚠️ No data found for {city} between {chunk_start} and {chunk_end}")
             continue
         daily_data = data["daily"]
         for i in range(len(daily_data["time"])):
             success = True
+            date_val = daily_data["time"][i]
+            if not isinstance(date_val, date):
+                date_val = date.fromisoformat(date_val)
             records.append({
-                "date": daily_data["time"][i],
+                "date": date_val,
                 "City": city,
                 "temperature_max": daily_data["temperature_2m_max"][i],
                 "temperature_min": daily_data["temperature_2m_min"][i],
@@ -158,7 +139,7 @@ def fetch_city_chunk_data(city: str, city_info: dict, city_start: date, end_date
 
 
 @dlt.source
-def openmeteo_source(cities: dict, base_start_date: date, end_date: date, context: OpExecutionContext):
+def openmeteo_source(cities: dict, base_start_date: date, end_date: date, row_max_min: Dict[str, Dict[str, date]], context: OpExecutionContext):
 
     @dlt.resource(name="daily_weather", write_disposition="merge", primary_key=["date", "City"])
     def weather_resource():
@@ -169,18 +150,16 @@ def openmeteo_source(cities: dict, base_start_date: date, end_date: date, contex
             "last_run_status": None
         })
 
-        city_stats = get_city_date_stats(context)
         all_dates = []
         futures = {}
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             for city, city_info in cities.items():
                 city_start = base_start_date
 
-                if city in city_stats:
-                    # Database Values
-                    max_date = city_stats[city]['max_date']
-                    min_date = city_stats[city]['min_date']
+                if city in row_max_min:
+                    max_date = row_max_min[city]['max_date']
+                    min_date = row_max_min[city]['min_date']
                     # Whats being passed in
                     expected_days = (end_date - base_start_date).days + 1
                     # In the DB
@@ -209,25 +188,29 @@ def openmeteo_source(cities: dict, base_start_date: date, end_date: date, contex
                     continue
 
                 futures[executor.submit(
-                    fetch_city_chunk_data, city, city_info, city_start, end_date)] = city
+                    fetch_city_chunk_data, city, city_info, city_start, end_date, context)] = city
 
-                for future in as_completed(futures):
-                    city = futures[future]
+            for future in as_completed(futures):
+                city = futures[future]
+                try:
                     records = future.result()[1]
-                    if records:
-                        for record in records:
-                            yield record
-                        state["city_status"][city] = "success"
-                        state["city_date"][city] = {
-                            "start": records[0]["date"],
-                            "end": records[-1]["date"]
-                        }
-                        all_dates.append(
-                            date.fromisoformat(records[0]["date"]))
-                        all_dates.append(
-                            date.fromisoformat(records[-1]["date"]))
-                    else:
-                        state["city_status"][city] = "failed"
+                except Exception as e:
+                    context.log.error(f"Failed fetching data for {city}: {e}")
+                    state["city_status"][city] = "failed"
+                    continue
+                if records:
+                    yield records
+                    state["city_status"][city] = "success"
+                    state["city_date"][city] = {
+                        "start": records[0]["date"],
+                        "end": records[-1]["date"]
+                    }
+                    all_dates.append(
+                        records[0]["date"])
+                    all_dates.append(
+                        records[-1]["date"])
+                else:
+                    state["city_status"][city] = "failed"
 
             if all_dates:
                 state["last_run_date"]["Min"] = str(min(all_dates))
@@ -244,14 +227,42 @@ def openmeteo_asset(context: OpExecutionContext) -> bool:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="openmeteo_pipeline",
-        destination=os.getenv("DLT_DESTINATION", "duckdb"),
+        destination=os.getenv("DLT_DESTINATION", "motherduck"),
+        pipelines_dir=str(DLT_PIPELINE_DIR),
         dataset_name="weather_data"
     )
+
+    try:
+        dataset = pipeline.dataset()["daily_weather"].df()
+        if dataset is not None:
+            row_max_min = dataset.groupby("city").agg(
+                min_date=("date", "min"), max_date=("date", "max")).reset_index()
+            row_max_min["min_date"] = pd.to_datetime(
+                row_max_min["min_date"]).dt.date
+            row_max_min["max_date"] = pd.to_datetime(
+                row_max_min["max_date"]).dt.date
+            row_max_min_dict = {
+                str(k): v for k, v in (
+                    row_max_min
+                    .set_index("city")[["min_date", "max_date"]]
+                    .to_dict(orient="index")
+                ).items()
+            }
+            context.log.info(f"Grouped Min and Max:\n{row_max_min}")
+    except PipelineNeverRan:
+        context.log.warning(
+            "⚠️ No previous runs found for this pipeline. Assuming first run.")
+        row_max_min_dict = {}
+    except DatabaseUndefinedRelation:
+        context.log.warning(
+            "⚠️ Table Doesn't Exist. Assuming truncation.")
+        row_max_min_dict = {}
 
     source = openmeteo_source(
         cities=cities,
         base_start_date=start_date,
         end_date=end_date,
+        row_max_min=row_max_min_dict,
         context=context
     )
 
@@ -282,7 +293,8 @@ def openmeteo_asset(context: OpExecutionContext) -> bool:
         return False
 
 
-@asset(deps=["openmeteo_asset"], group_name="Open_Meteo", tags={"source": "Open_Meteo"})
+@asset(deps=["openmeteo_asset"], group_name="Open_Meteo",
+       tags={"source": "Open_Meteo"}, required_resource_keys={"dbt"})
 def dbt_meteo_data(context: OpExecutionContext, openmeteo_asset: bool) -> None:
     """Runs the dbt command after loading the data from OpenMeteo API."""
 
@@ -295,22 +307,15 @@ def dbt_meteo_data(context: OpExecutionContext, openmeteo_asset: bool) -> None:
         )
         return
 
-    DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
-    context.log.info(f"DBT Project Directory: {DBT_PROJECT_DIR}")
-
-    start = time.time()
     try:
-        result = subprocess.run(
-            ["dbt", "build", "--select", "source:weather+"],
-            # shell=True,
-            cwd=DBT_PROJECT_DIR,
-            capture_output=True,
-            text=True,
-            check=True
+        invocation = context.resources.dbt.cli(
+            ["build", "--select", "source:meals+"],
+            context=context
         )
-        duration = round(time.time() - start, 2)
-        context.log.info(f"dbt build completed in {duration}s")
-        context.log.info(result.stdout)
-    except subprocess.CalledProcessError as e:
-        context.log.error(f"dbt build failed:\n{e.stdout}\n{e.stderr}")
+
+        # Wait for dbt to finish and get the full stdout log
+        invocation.wait()
+        return
+    except Exception as e:
+        context.log.error(f"dbt build failed:\n{e}")
         raise

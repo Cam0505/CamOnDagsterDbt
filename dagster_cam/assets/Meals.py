@@ -2,13 +2,12 @@ from dagster import asset, OpExecutionContext
 import os
 import requests
 from dotenv import load_dotenv
-from pathlib import Path
 import dlt
 import time
-import subprocess
+from path_config import ENV_FILE, DLT_PIPELINE_DIR
 
 
-load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+load_dotenv(dotenv_path=ENV_FILE)
 TABLE_PARAMS = {
     "category": ["c=list", "strCategory"],
     "country": ["a=list", "strArea"],
@@ -81,7 +80,8 @@ def meals_dim_data(context) -> dict:
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
         pipeline_name="meals_pipeline",
-        destination=os.getenv("DLT_DESTINATION", "duckdb"),
+        destination=os.getenv("DLT_DESTINATION", "motherduck"),
+        pipelines_dir=str(DLT_PIPELINE_DIR),
         dataset_name="meals_data",
         dev_mode=False,
     )
@@ -194,6 +194,7 @@ def meals_dimension_data(context, meals_dim_data: dict) -> bool:
     pipeline = dlt.pipeline(
         pipeline_name="meals_pipeline",
         destination=os.getenv("DLT_DESTINATION", "duckdb"),
+        pipelines_dir=str(DLT_PIPELINE_DIR),
         dataset_name="meals_data",
         dev_mode=False
     )
@@ -222,7 +223,6 @@ def meals_fact_data(context, meals_dimension_data: bool) -> bool:
             )
             return False
         url = f"https://www.themealdb.com/api/json/v1/1/random.php"
-        all_meals = []
 
         for i in range(20):
             try:
@@ -233,8 +233,7 @@ def meals_fact_data(context, meals_dimension_data: bool) -> bool:
                     context.log.warning(
                         f"No meals returned in iteration {i+1}")
                     continue
-                for meal in meals:
-                    yield meal
+                yield meals
 
                 time.sleep(0.2)  # Prevent throttling
             except requests.RequestException as e:
@@ -253,6 +252,7 @@ def meals_fact_data(context, meals_dimension_data: bool) -> bool:
             pipeline_name="meals_pipeline",
             destination=os.getenv("DLT_DESTINATION", "duckdb"),
             dataset_name="meals_data",
+            pipelines_dir=str(DLT_PIPELINE_DIR),
             dev_mode=False
         )
 
@@ -268,7 +268,8 @@ def meals_fact_data(context, meals_dimension_data: bool) -> bool:
         return True
 
 
-@asset(deps=["meals_fact_data"], group_name="Meals", tags={"source": "Meals"})
+@asset(deps=["meals_fact_data"], group_name="Meals",
+       tags={"source": "Meals"}, required_resource_keys={"dbt"})
 def dbt_meals_data(context: OpExecutionContext, meals_fact_data: bool) -> None:
     """Runs the dbt command after loading the data from Beverage API."""
     if not meals_fact_data:
@@ -280,20 +281,15 @@ def dbt_meals_data(context: OpExecutionContext, meals_fact_data: bool) -> None:
         )
         return
 
-    DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
-    context.log.info(f"DBT Project Directory: {DBT_PROJECT_DIR}")
+    try:
+        invocation = context.resources.dbt.cli(
+            ["build", "--select", "source:meals+"],
+            context=context
+        )
 
-    result = subprocess.run(
-        "dbt build --select source:meals+",
-        shell=True,
-        cwd=DBT_PROJECT_DIR,
-        capture_output=True,
-        text=True
-    )
-
-    context.log.info(result.stdout)
-    if result.stderr:
-        context.log.error(result.stderr)
-
-    if result.returncode != 0:
-        raise Exception(f"dbt build failed with code {result.returncode}")
+        # Wait for dbt to finish and get the full stdout log
+        invocation.wait()
+        return
+    except Exception as e:
+        context.log.error(f"dbt build failed:\n{e}")
+        raise

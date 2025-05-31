@@ -17,7 +17,7 @@ def get_project_root():
 
     for path in search_paths:
         try:
-            if (path / "dbt").exists() and (path / "pipelines").exists():
+            if (path / "dbt").exists() and (path / "dagster_cam").exists():
                 return path.resolve()
         except (PermissionError, OSError) as e:
             logging.warning(f"Couldn't access {path} - {str(e)}")
@@ -28,7 +28,7 @@ def get_project_root():
         f"- Possible roots: {[str(p) for p in search_paths]}\n"
         f"- Current directory: {str(cwd)}\n"
         f"- Contents: {[f.name for f in cwd.iterdir() if f.is_dir()]}\n"
-        "Required structure: must contain 'dbt/' and 'pipelines/' subdirectories"
+        "Required structure: must contain 'dbt/' and 'dagster_cam/' subdirectories"
     )
 
 
@@ -38,7 +38,7 @@ DBT_DIR = PROJECT_ROOT / "dbt"
 CREDENTIALS = PROJECT_ROOT / "keys" / "credentials.json"
 ENV_FILE = PROJECT_ROOT / ".env"
 REQUEST_CACHE_DIR = PROJECT_ROOT / "request_cache"
-DAGSTER_DIR = PROJECT_ROOT / "cam_on_dagster_dbt"
+DAGSTER_DIR = PROJECT_ROOT / "dagster_cam"
 DLT_PIPELINE_DIR = DAGSTER_DIR / ".dlt"
 ASSETS_DIR = DAGSTER_DIR / "assets"
 JOBS_DIR = DAGSTER_DIR / "jobs"

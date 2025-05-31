@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: openlibrary
+    database: camondagster
+    schema: openlibrary_data
+    tables:
+      - name: books
+      - name: books__authors
+      - name: books__languages
+      - name: subjects

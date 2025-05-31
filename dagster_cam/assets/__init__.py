@@ -16,7 +16,7 @@ from .Meals import (
     dbt_meals_data,
 )
 from .GeoAPI import get_geo_data, dbt_geo_data
-from .openlibrary import openlibrary_books_asset, dbt_openlibrary_data
+from .openlibrary import openlibrary_books_asset, openlibrary_subjects_asset,  dbt_openlibrary_data
 from .rick_and_morty import rick_and_morty_asset, dbt_rick_and_morty_data
 
 __all__ = [
@@ -33,6 +33,7 @@ __all__ = [
     "get_geo_data",
     "dbt_geo_data",
     "openlibrary_books_asset",
+    "openlibrary_subjects_asset",
     "dbt_openlibrary_data",
     "rick_and_morty_asset",
     "dbt_rick_and_morty_data",

@@ -13,6 +13,7 @@ from .path_config import (
     JOBS_DIR
 )
 
+from .helper_functions import sanitize_filename
 
 __all__ = [
     'DBT_DIR',
@@ -24,5 +25,6 @@ __all__ = [
     'DAGSTER_DIR',
     'DLT_PIPELINE_DIR',
     'ASSETS_DIR',
-    'JOBS_DIR'
+    'JOBS_DIR',
+    'sanitize_filename'
 ]

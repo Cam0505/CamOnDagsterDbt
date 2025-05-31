@@ -1,17 +1,16 @@
 from dagster import asset, OpExecutionContext
-import subprocess
-from pathlib import Path
 import os
 import pandas as pd
 import gspread
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 import dlt
-import time as t
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
+from path_config import ENV_FILE, CREDENTIALS, DLT_PIPELINE_DIR
 
-load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
+
+load_dotenv(dotenv_path=ENV_FILE)
 
 # Prevent Accidental Manual Execution Outside of ASX Hours
 
@@ -29,7 +28,7 @@ def is_within_asx_hours() -> bool:
 
 @dlt.source
 def gsheet_finance_source(logger=None):
-    @dlt.resource(write_disposition="append", name="gsheets_finance")
+    @dlt.resource(write_disposition="merge", primary_key="id", name="gsheets_finance")
     def gsheet_finance_resource():
         # Initialize state within the source context
         state = dlt.current.source_state().setdefault("gsheet_finance", {
@@ -44,7 +43,7 @@ def gsheet_finance_source(logger=None):
         try:
             # Load data from Google Sheets
             creds = Credentials.from_service_account_file(
-                os.getenv("CREDENTIALS_FILE"),
+                CREDENTIALS,
                 scopes=[
                     'https://spreadsheets.google.com/feeds',
                     'https://www.googleapis.com/auth/drive'
@@ -83,20 +82,20 @@ def gsheet_finance_source(logger=None):
                 latest_state_ts = pd.to_datetime(state["latest_ts"])
                 buffered_ts = latest_state_ts + pd.Timedelta(minutes=30)
 
-                if latest_gsheet_ts <= buffered_ts:
-                    state.update({
-                        "last_run": datetime.now(ZoneInfo("UTC")).isoformat(),
-                        "last_run_status": "skipped_no_new_data"
-                    })
-                    if logger:
-                        logger.info(
-                            f"\n🔁 SKIPPED LOAD:\n"
-                            f"📅 GSheet timestamp: {latest_gsheet_ts}\n"
-                            f"📦 Buffered DLT state timestamp: {buffered_ts}\n"
-                            f"⏳ Reason: No new data within 30-minute window.\n"
-                            f"{'-'*45}"
-                        )
-                    return
+                # if latest_gsheet_ts <= buffered_ts:
+                #     state.update({
+                #         "last_run": datetime.now(ZoneInfo("UTC")).isoformat(),
+                #         "last_run_status": "skipped_no_new_data"
+                #     })
+                #     if logger:
+                #         logger.info(
+                #             f"\n🔁 SKIPPED LOAD:\n"
+                #             f"📅 GSheet timestamp: {latest_gsheet_ts}\n"
+                #             f"📦 Buffered DLT state timestamp: {buffered_ts}\n"
+                #             f"⏳ Reason: No new data within 30-minute window.\n"
+                #             f"{'-'*45}"
+                #         )
+                #     return
 
             # Update state
             state.update({
@@ -127,8 +126,10 @@ def gsheet_finance_data(context: OpExecutionContext) -> bool:
 
     pipeline = dlt.pipeline(
         pipeline_name="gsheets_to_duckdb",
-        destination=os.getenv("DLT_DESTINATION", "duckdb"),
-        dataset_name="google_sheets_data", dev_mode=False
+        destination=os.getenv("DLT_DESTINATION", "MotherDuck"),
+        dataset_name="google_sheets_data",
+        pipelines_dir=str(DLT_PIPELINE_DIR),
+        dev_mode=False
     )
 
     # Get the source
@@ -154,7 +155,12 @@ def gsheet_finance_data(context: OpExecutionContext) -> bool:
         return False
 
 
-@asset(deps=["gsheet_finance_data"], group_name="gSheets", tags={"source": "gSheets"})
+@asset(
+    deps=["gsheet_finance_data"],
+    group_name="gSheets",
+    tags={"source": "gSheets"},
+    required_resource_keys={"dbt"}
+)
 def gsheet_dbt_command(context: OpExecutionContext, gsheet_finance_data: bool) -> None:
     """Runs the dbt command after loading the data from Google Sheets."""
 
@@ -167,24 +173,15 @@ def gsheet_dbt_command(context: OpExecutionContext, gsheet_finance_data: bool) -
         )
         return
 
-    DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
-    context.log.info(f"DBT Project Directory: {DBT_PROJECT_DIR}")
-
-    start = t.time()
     try:
-        result = subprocess.run(
-            "dbt run --select source:gsheets+",
-            shell=True,
-            cwd=DBT_PROJECT_DIR,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=120
+        invocation = context.resources.dbt.cli(
+            ["build", "--select", "source:gsheets+"],
+            context=context
         )
 
-        duration = round(t.time() - start, 2)
-        context.log.info(f"dbt build completed in {duration}s")
-        context.log.info(result.stdout)
-    except subprocess.CalledProcessError as e:
-        context.log.error(f"dbt build failed:\n{e.stdout}\n{e.stderr}")
+        # Wait for dbt to finish and get the full stdout log
+        invocation.wait()
+        return
+    except Exception as e:
+        context.log.error(f"dbt build failed:\n{e}")
         raise

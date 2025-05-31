@@ -19,12 +19,16 @@ env/
 
 # === Dagster ===
 *.dagster/
-cam_on_dagster_dbt/assets/.dlt/
-cam_on_dagster_dbt/assets/.dlt/secrets.toml
-cam_on_dagster_dbt/assets/.dlt/config.toml
+dagster_cam/.dlt/secrets.toml
+dagster_cam/.dlt/config.toml
 
+
+dagster_cam/.dlt/*/load
+dagster_cam/.dlt/*/normalize
+dagster_cam/.dlt/*/trace.pickle
+dagster_cam/.dlt/.anonymous_id
 # === Jupyter Notebooks ===
-.ipynb_checkpoints/
+.ipynb_checkpoints/ 
 
 # === VS Code ===
 .vscode/
@@ -46,20 +50,5 @@ keys/
 keys/credentials.json
 keys/dagster-sa-key.json
 
-.dlt/
-
-
-# Terraform files
-*.tfstate
-*.tfstate.backup
-.terraform/
-.terraform.lock.hcl
-terraform/terraform.tfvars
-.tfvars
-terraform/terraform_commands.txt
-
-# Ignore all local terraform plans except committed *.tf files
-terraform/*.binary
-terraform/*.json
-
-.github/workflows/example.yml
+request_cache/*
+!request_cache/.gitkeep
