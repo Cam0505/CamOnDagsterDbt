@@ -1,12 +1,8 @@
-from dagster import asset, OpExecutionContext
+from dagster import asset, AssetExecutionContext, Output
 import csv
-import dlt
-from dlt import current
-import os
+import pandas as pd
+import requests
 from dotenv import load_dotenv
-from dlt.sources.helpers import requests
-from datetime import date
-import json
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
 
@@ -29,106 +25,148 @@ HEADERS = {
 }
 
 
-def json_converter(o):
-    if isinstance(o, date):
-        return o.isoformat()
-    return str(o)
+@asset(group_name="openflights", compute_kind="python", name="airlines_asset")
+def airlines_asset(context: AssetExecutionContext):
+    response = requests.get(URLS["airlines"])
+    response.raise_for_status()
+    # Convert to list for len()
+    reader = list(csv.reader(response.iter_lines(decode_unicode=True)))
 
+    headers = HEADERS["airlines"]
+    malformed = 0
 
-def create_resource(resource_name, existing_count: int, context: OpExecutionContext):
-    @dlt.resource(name=resource_name, write_disposition="replace")
-    def resource_fn():
+    # Compute count before processing for efficiency
+    count = len(reader)
 
-        state = current.source_state().setdefault(resource_name, {
-            "processed_records": 0,
-            "run_status": "",
-            "skipped_rows": 0
-        })
+    last_event = context.instance.get_latest_materialization_event(
+        context.asset_key)
+    if last_event and last_event.asset_materialization and last_event.asset_materialization.metadata:
+        prev_row_count = last_event.asset_materialization.metadata.get(
+            'row_count', 0)
+        malformed_rows = last_event.asset_materialization.metadata.get(
+            'malformed_rows', 0)
+        prev_row_count = getattr(prev_row_count, "value", prev_row_count)
+        malformed_rows = getattr(malformed_rows, "value", malformed_rows)
+    else:
+        prev_row_count = 0
+    # I need to implement this, however it's complex, dagster is blood picky
+    # If the row count hasn't changed, exit early and do not write to the database
+    # if prev_row_count == count:
+    #     return Output(
+    #         value=None,
+    #         metadata={
+    #             "row_count": count,
+    #             "malformed_rows": malformed_rows,
+    #             "headers": headers
+    #         }
+    #     )
 
-        if existing_count == state["processed_records"]:
-            context.log.info(
-                f"\n🔁 SKIPPED LOAD: `{resource_name}` — No new data.")
-            state["run_status"] = "skipped_no_new_data"
-            return
-        try:
-            response = requests.get(URLS[resource_name])
-            response.raise_for_status()
-            reader = csv.reader(response.iter_lines(decode_unicode=True))
+    rows = []
+    for row in reader:
+        if len(row) != len(headers):
+            malformed += 1
+            continue
+        rows.append(row)
 
-            count = 0
-            headers = HEADERS[resource_name]
-
-            skipped = 0
-            for row in reader:
-                if len(row) != len(headers):
-                    # Skip malformed rows
-                    skipped += 1
-                    continue
-                yield dict(zip(headers, row))
-                count += 1
-
-            state["processed_records"] = count
-            state["run_status"] = "success"
-            state["skipped_rows"] = skipped
-            context.log.info(
-                f"✅ Loaded {count} rows from {resource_name} (skipped {skipped})")
-        except Exception as e:
-            state["run_status"] = "failed"
-            context.log.error(f"❌ Failed to load `{resource_name}`: {e}")
-            raise e
-    return resource_fn
-
-
-@dlt.source
-def openflights_source(context: OpExecutionContext, row_counts_dict: dict):
-    yield create_resource("airlines", row_counts_dict.get("airlines", 0), context)
-    yield create_resource("airports", row_counts_dict.get("airports", 0), context)
-    yield create_resource("routes", row_counts_dict.get("routes", 0), context)
-    yield create_resource("planes", row_counts_dict.get("planes", 0), context)
-
-
-@asset(group_name="openflights", compute_kind="python")
-def openflights_data(context: OpExecutionContext) -> bool:
-    pipeline = dlt.pipeline(
-        pipeline_name="openflights_pipeline",
-        destination=os.getenv("DLT_DESTINATION", "duckdb"),
-        dataset_name="openflights",
-        dev_mode=False
+    df = pd.DataFrame(rows, columns=headers)
+    return Output(
+        value=df,
+        metadata={
+            "row_count": count,
+            "malformed_rows": malformed,
+            "headers": headers
+        }
     )
 
-    row_counts = pipeline.dataset().row_counts().df()
-    if row_counts is not None:
-        row_counts_dict = dict(
-            zip(row_counts["table_name"], row_counts["row_count"]))
-    else:
-        context.log.warning(
-            "⚠️ No tables found yet in dataset — assuming first run.")
-        row_counts_dict = {}
-    source = openflights_source(context, row_counts_dict)
-    try:
-        load_info = pipeline.run(source)
-        run_statuses = [source.state.get(
-            resource, {})["run_status"] for resource in URLS.keys()]
 
-        context.log.info("Airline State Metadata:\n" +
-                         json.dumps(source.state, indent=2, default=json_converter))
+@asset(group_name="openflights", compute_kind="python", name="airports_asset")
+def airports_asset(context: AssetExecutionContext):
+    response = requests.get(URLS["airports"])
+    response.raise_for_status()
+    # Convert to list for len()
+    reader = list(csv.reader(response.iter_lines(decode_unicode=True)))
 
-        if all(s == "skipped_no_new_data" for s in run_statuses):
-            context.log.info(
-                "\n\n ⏭️ All Cities skipped — no data loaded.")
-            return False
-        elif all(s == "failed" for s in run_statuses):
-            context.log.error(
-                "\n\n 💥 All cities failed to load — check API or network.")
-            return False
+    headers = HEADERS["airports"]
+    malformed = 0
 
-        loaded_count = sum(1 for s in run_statuses if s == "success")
-        context.log.info(f"\n\n ✅ Number of cities loaded: {loaded_count}")
+    # Compute count before processing for efficiency
+    count = len(reader)
 
-        return True
-    except Exception as e:
-        context.log.error(f"❌ Pipeline failed: {e}")
-        return False
-    finally:
-        context.log.info("Pipeline dropped.")
-        pipeline.drop()
+    rows = []
+    for row in reader:
+        if len(row) != len(headers):
+            malformed += 1
+            continue
+        rows.append(row)
+
+    df = pd.DataFrame(rows, columns=headers)
+    return Output(
+        value=df,
+        metadata={
+            "row_count": count,
+            "malformed_rows": malformed,
+            "headers": headers
+        }
+    )
+
+
+@asset(group_name="openflights", compute_kind="python", name="routes_asset")
+def routes_asset(context: AssetExecutionContext):
+    response = requests.get(URLS["routes"])
+    response.raise_for_status()
+    # Convert to list for len()
+    reader = list(csv.reader(response.iter_lines(decode_unicode=True)))
+
+    headers = HEADERS["routes"]
+    malformed = 0
+
+    # Compute count before processing for efficiency
+    count = len(reader)
+
+    rows = []
+    for row in reader:
+        if len(row) != len(headers):
+            malformed += 1
+            continue
+        rows.append(row)
+
+    df = pd.DataFrame(rows, columns=headers)
+    return Output(
+        value=df,
+        metadata={
+            "row_count": count,
+            "malformed_rows": malformed,
+            "headers": headers
+        }
+    )
+
+
+@asset(group_name="openflights", compute_kind="python", name="planes_asset")
+def planes_asset(context: AssetExecutionContext):
+    response = requests.get(URLS["planes"])
+    response.raise_for_status()
+    # Convert to list for len()
+    reader = list(csv.reader(response.iter_lines(decode_unicode=True)))
+
+    headers = HEADERS["planes"]
+    malformed = 0
+
+    # Compute count before processing for efficiency
+    count = len(reader)
+
+    rows = []
+    for row in reader:
+        if len(row) != len(headers):
+            malformed += 1
+            continue
+        rows.append(row)
+
+    df = pd.DataFrame(rows, columns=headers)
+    return Output(
+        value=df,
+        metadata={
+            "row_count": count,
+            "malformed_rows": malformed,
+            "headers": headers
+        }
+    )

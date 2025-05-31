@@ -3,9 +3,10 @@ version: 2
 sources:
   - name: openflights
     database: camondagster
-    schema: openflights
+    schema: public
+    description: "Source data from OpenFlights, a free database of airports, airlines, routes, and planes."
     tables:
-      - name: airlines
-      - name: airports
-      - name: planes
-      - name: routes
+      - name: airlines_assets
+      - name: airports_assets
+      - name: planes_assets
+      - name: routes_assets

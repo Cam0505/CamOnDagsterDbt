@@ -13,7 +13,7 @@ from .path_config import (
     JOBS_DIR
 )
 
-from .helper_functions import sanitize_filename
+from .helper_functions import sanitize_filename, json_converter
 
 __all__ = [
     'DBT_DIR',
@@ -26,5 +26,6 @@ __all__ = [
     'DLT_PIPELINE_DIR',
     'ASSETS_DIR',
     'JOBS_DIR',
-    'sanitize_filename'
+    'sanitize_filename',
+    'json_converter'
 ]

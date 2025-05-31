@@ -1,0 +1,36 @@
+telemetry:
+  enabled: false
+
+run_storage:
+  module: dagster_postgres.run_storage
+  class: PostgresRunStorage
+  config:
+    postgres_db:
+      username: dagster
+      password: dagster
+      hostname: host.docker.internal
+      db_name: dagster
+
+event_log_storage:
+  module: dagster_postgres.event_log
+  class: PostgresEventLogStorage
+  config:
+    postgres_db:
+      username: dagster
+      password: dagster
+      hostname: host.docker.internal
+      db_name: dagster
+
+schedule_storage:
+  module: dagster_postgres.schedule_storage
+  class: PostgresScheduleStorage
+  config:
+    postgres_db:
+      username: dagster
+      password: dagster
+      hostname: host.docker.internal
+      db_name: dagster
+
+scheduler:
+  module: dagster.core.scheduler
+  class: DagsterDaemonScheduler

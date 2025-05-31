@@ -10,7 +10,6 @@ services:
     user: vscode
     volumes:
       - ../:/workspaces/CamOnDagster:cached
-      - ./duckdb:/workspaces/CamOnDagster/duckdb:z
     environment:
       - DLT_TELEMETRY=off
       - DBT_PROFILES_DIR=/workspaces/CamOnDagster/dbt
@@ -21,15 +20,17 @@ services:
   postgres:
     image: postgres:13
     environment:
-      - POSTGRES_USER="${POSTGRES_USER}"
-      - POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
-      - POSTGRES_DB="${POSTGRES_DB}"
+      - POSTGRES_USER="dagster"
+      - POSTGRES_PASSWORD="dagster"
+      - POSTGRES_DB="dagster"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
       test: [
         "CMD-SHELL",
-        "pg_isready -U '${POSTGRES_USER}' -d '${POSTGRES_DB}'"
+        "pg_isready -U 'dagster' -d 'dagster'"
       ]
       interval: 5s
       timeout: 5s
@@ -43,3 +44,4 @@ volumes:
 networks:
   dagster-net:
     driver: bridge
+

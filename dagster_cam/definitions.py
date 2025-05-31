@@ -1,18 +1,20 @@
-from dagster_cam.jobs import gsheets_financial_with_dbt_job
+from dagster_cam.assets import airlines_asset, planes_asset, airports_asset, routes_asset
+from dagster_cam.jobs import airline_job
+# from dagster_cam.jobs import gsheets_financial_with_dbt_job
 # from dagster_cam.assets import openmeteo_asset, dbt_meteo_data
 # from dagster_cam.jobs import open_meteo_job
 # from dagster_cam.jobs import openlibrary_job
 # from dagster_cam.assets import openlibrary_books_asset, openlibrary_subjects_asset, dbt_openlibrary_data
 from dagster_cam.sensors import camon_sensor
 from dagster_cam.schedules import schedules
-from dagster_cam.assets import gsheet_finance_data, dbt_models
+# from dagster_cam.assets import gsheet_finance_data, dbt_models
 from dotenv import load_dotenv
 import os
 from dagster_duckdb_pandas import DuckDBPandasIOManager
-from dagster import Definitions
-from dagster_dbt import DbtCliResource
 
-from dagster_cam.assets import DBT_PROJECT_DIR
+from dagster import Definitions, DagsterInstance
+from dagster_dbt import DbtCliResource
+from path_config import DBT_DIR
 
 MotherDuck = os.getenv("MD")
 if not MotherDuck:
@@ -28,9 +30,6 @@ if not MotherDuck:
 
 # from dagster_cam.assets import camon_dbt_assets
 
-
-# from dagster_cam.jobs import airline_job
-# from dagster_cam.assets import openflights_data
 
 # Beverages Assets
 # from dagster_cam.assets import dimension_data, beverage_fact_data, dbt_beverage_data
@@ -57,31 +56,33 @@ if not MotherDuck:
 
 
 # Define the assets
-all_assets = [gsheet_finance_data, dbt_models]
+all_assets = [airlines_asset, planes_asset, airports_asset, routes_asset]
 
 # Register the job, sensor, and schedule in the Definitions
 defs = Definitions(
     assets=all_assets,
-    # Register only the gsheets job
-    jobs=[gsheets_financial_with_dbt_job],
+    # Register only the airline job
+    jobs=[airline_job],
     schedules=[schedules]  # ,
     # sensors=[camon_sensor]
     , resources={
         "io_manager": DuckDBPandasIOManager(database=MotherDuck),
-        "dbt": DbtCliResource(project_dir=DBT_PROJECT_DIR, profiles_dir=DBT_PROJECT_DIR),
+        "dbt": DbtCliResource(project_dir=DBT_DIR, profiles_dir=DBT_DIR),
     }
 )
 
 # Execute the job immediately
 if __name__ == "__main__":
     try:
-        job = defs.get_job_def("gsheets_financial_with_dbt_job")
+        instance = DagsterInstance.get()
+        job = defs.get_job_def("airline_job")
         result = job.execute_in_process(
+            instance=instance,
             resources={
                 "io_manager": DuckDBPandasIOManager(database=MotherDuck),
-                "dbt": DbtCliResource(project_dir=DBT_PROJECT_DIR, profiles_dir=DBT_PROJECT_DIR),
+                "dbt": DbtCliResource(project_dir=DBT_DIR, profiles_dir=DBT_DIR),
             }
         )
-        print("gsheets_financial_with_dbt_job Job finished:", result)
+        print("airline_job Job finished:", result)
     except Exception as e:
         print(f"Error executing job: {e}")

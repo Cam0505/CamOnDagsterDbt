@@ -1,14 +1,19 @@
-from pathlib import Path
-from dagster import asset, Output, OutputContext, AssetExecutionContext
-from dagster_dbt import DbtCliResource, DbtProject, dbt_assets
+
 import os
+from dagster import AssetExecutionContext
+from path_config import DBT_DIR
+from dagster_dbt import dbt_assets, DbtCliResource, DbtProject
+dbt_project = DbtProject(
+    project_dir=DBT_DIR,
+    profiles_dir=DBT_DIR,
+)
+
 
 # Define paths
-DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
-dbt = DbtCliResource(project_dir=os.fspath(DBT_PROJECT_DIR))
+dbt = DbtCliResource(project_dir=os.fspath(DBT_DIR))
 
 
-dbt_manifest_path = DBT_PROJECT_DIR.joinpath("target", "manifest.json")
+dbt_manifest_path = DBT_DIR.joinpath("target", "manifest.json")
 
 
 @dbt_assets(manifest=dbt_manifest_path,

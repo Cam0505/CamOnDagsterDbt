@@ -27,6 +27,8 @@ dagster_cam/.dlt/*/load
 dagster_cam/.dlt/*/normalize
 dagster_cam/.dlt/*/trace.pickle
 dagster_cam/.dlt/.anonymous_id
+
+dagster_home/*/* 
 # === Jupyter Notebooks ===
 .ipynb_checkpoints/ 
 

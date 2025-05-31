@@ -1,8 +1,13 @@
-from .dbt_assets import camon_dbt_assets, DBT_PROJECT_DIR
+from .dbt_assets import camon_dbt_assets
 from .open_meteo import openmeteo_asset, dbt_meteo_data
 from .Gsheets import gsheet_finance_data, dbt_models
 from .youtube import youtube_pipeline
-from .airlines import openflights_data
+from .airlines import (
+    airlines_asset,
+    routes_asset,
+    airports_asset,
+    planes_asset
+)
 from .uv import uv_asset
 from .Beverages import (
     dimension_data,
@@ -40,7 +45,9 @@ __all__ = [
     "openmeteo_asset",
     "dbt_meteo_data",
     "youtube_pipeline",
-    "openflights_data",
+    "airlines_asset",
+    "routes_asset",
+    "airports_asset",
+    "planes_asset",
     "uv_asset",
-    "DBT_PROJECT_DIR",
 ]

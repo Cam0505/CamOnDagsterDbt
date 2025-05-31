@@ -1,4 +1,4 @@
-from .assets import (
+from dagster_cam.assets import (
     camon_dbt_assets,
     gsheet_finance_data,
     dbt_models,
@@ -18,10 +18,10 @@ from .assets import (
     openmeteo_asset,
     dbt_meteo_data,
     youtube_pipeline,
-    openflights_data,
+    airlines,
     uv_asset,
 )
-from .jobs import (
+from dagster_cam.jobs import (
     gsheets_financial_with_dbt_job,
     beverage_dim_job,
     meals_dim_job,
@@ -34,9 +34,9 @@ from .jobs import (
     airline_job,
     uv_job,
 )
-from .schedules import schedules
-from .sensors import camon_sensor
-from .definitions import defs
+from dagster_cam.schedules import schedules
+from dagster_cam.sensors import camon_sensor
+from dagster_cam.definitions import defs
 
 __all__ = [
     # Assets
@@ -59,7 +59,7 @@ __all__ = [
     "openmeteo_asset",
     "dbt_meteo_data",
     "youtube_pipeline",
-    "openflights_data",
+    "airlines",
     "uv_asset",
     # Jobs
     "gsheets_financial_with_dbt_job",
