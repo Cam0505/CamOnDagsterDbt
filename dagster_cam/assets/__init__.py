@@ -8,7 +8,7 @@ from .airlines import (
     airports_asset,
     planes_asset
 )
-from .uv import uv_asset
+from .uv import uv_asset, dbt_uv_data
 from .Beverages import (
     dimension_data,
     beverage_fact_data,
@@ -50,4 +50,5 @@ __all__ = [
     "airports_asset",
     "planes_asset",
     "uv_asset",
+    "dbt_uv_data",
 ]

@@ -1,13 +1,10 @@
-from dagster import asset, OpExecutionContext
+from dagster import asset, AssetExecutionContext
 import os
 # import requests
 from dotenv import load_dotenv
-from pathlib import Path
 import dlt
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import time
-import subprocess
 from dlt.sources.helpers import requests
 
 load_dotenv(dotenv_path="/workspaces/CamOnDagster/.env")
@@ -25,7 +22,7 @@ cities = [
 ]
 
 
-def get_dates(context: OpExecutionContext):
+def get_dates(context: AssetExecutionContext):
     try:
         pipeline = dlt.current.pipeline()
         with pipeline.sql_client() as client:
@@ -37,7 +34,7 @@ def get_dates(context: OpExecutionContext):
         return []
 
 
-def get_uv_data(lat: float, lng: float, dt: datetime, context: OpExecutionContext):
+def get_uv_data(lat: float, lng: float, dt: datetime, context: AssetExecutionContext):
     dt_local = datetime.combine(dt, datetime.min.time(
     ), tzinfo=ZoneInfo("Australia/Sydney")).replace(hour=12)
     headers = {"x-access-token": os.getenv("UV_API_KEY")}
@@ -59,7 +56,7 @@ def get_uv_data(lat: float, lng: float, dt: datetime, context: OpExecutionContex
 
 
 @dlt.source
-def openuv_source(cities: list[dict], dates: list[datetime], context: OpExecutionContext):
+def openuv_source(cities: list[dict], dates: list[datetime], context: AssetExecutionContext):
 
     @dlt.resource(name="uv_index", write_disposition="merge", primary_key=["uv_time", "City"])
     def uv_resource():
@@ -88,7 +85,7 @@ def openuv_source(cities: list[dict], dates: list[datetime], context: OpExecutio
 
 
 @asset(compute_kind="python", group_name="OpenUV", tags={"source": "OpenUV"})
-def uv_asset(context: OpExecutionContext) -> bool:
+def uv_asset(context: AssetExecutionContext) -> bool:
     """Loads UV data from OpenUV API using DLT."""
     context.log.info("🚀 Starting DLT pipeline for OpenUV API")
 
@@ -113,3 +110,30 @@ def uv_asset(context: OpExecutionContext) -> bool:
         import sys
         sys.stdout.flush()
         sys.stderr.flush()
+
+
+@asset(deps=["uv_asset"], group_name="OpenUV",
+       tags={"source": "OpenUV"}, required_resource_keys={"dbt"})
+def dbt_uv_data(context: AssetExecutionContext, uv_asset: bool) -> None:
+    """Runs dbt models for OpenUV API after loading data."""
+
+    if not uv_asset:
+        context.log.warning(
+            "\n⚠️  WARNING: DBT SKIPPED\n"
+            "📉 No data was loaded from OpenUV API.\n"
+            "🚫 Skipping dbt run.\n"
+        )
+        return
+
+    try:
+        invocation = context.resources.dbt.cli(
+            ["build", "--select", "source:uv+"],
+            context=context
+        )
+
+        # Wait for dbt to finish and get the full stdout log
+        invocation.wait()
+        return
+    except Exception as e:
+        context.log.error(f"dbt build failed:\n{e}")
+        raise

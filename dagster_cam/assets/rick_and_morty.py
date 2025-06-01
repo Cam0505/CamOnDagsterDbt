@@ -1,4 +1,4 @@
-from dagster import asset, OpExecutionContext
+from dagster import asset, AssetExecutionContext
 import os
 # import requests
 from dotenv import load_dotenv
@@ -24,7 +24,7 @@ RESOURCE_CONFIG: dict[str, str] = {
 def make_resource(table_name: str, primary_key: str, existing_count: int):
 
     @dlt.resource(name=table_name, write_disposition="merge", primary_key=primary_key)
-    def _resource(context: OpExecutionContext):
+    def _resource(context: AssetExecutionContext):
         state = dlt.current.source_state().setdefault(table_name, {
             "count": 0,
             "last_run_status": None
@@ -73,13 +73,13 @@ def make_resource(table_name: str, primary_key: str, existing_count: int):
 
 
 @dlt.source
-def rick_and_morty_source(context: OpExecutionContext, current_counts):
+def rick_and_morty_source(context: AssetExecutionContext, current_counts):
     for endpoint, primary_key in RESOURCE_CONFIG.items():
         yield make_resource(endpoint, primary_key, current_counts.get(endpoint, 0))(context)
 
 
 @asset(compute_kind="python", group_name="RickAndMorty", tags={"source": "RickAndMorty"})
-def rick_and_morty_asset(context: OpExecutionContext) -> bool:
+def rick_and_morty_asset(context: AssetExecutionContext) -> bool:
     """Loads characters, episodes, and locations from Rick and Morty API using DLT."""
     context.log.info("🚀 Starting DLT pipeline for Rick and Morty API")
 
@@ -123,8 +123,9 @@ def rick_and_morty_asset(context: OpExecutionContext) -> bool:
         return False
 
 
-@asset(deps=["rick_and_morty_asset"], group_name="RickAndMorty", tags={"source": "RickAndMorty"})
-def dbt_rick_and_morty_data(context: OpExecutionContext, rick_and_morty_asset: bool) -> None:
+@asset(deps=["rick_and_morty_asset"], group_name="RickAndMorty",
+       tags={"source": "RickAndMorty"}, required_resource_keys={"dbt"})
+def dbt_rick_and_morty_data(context: AssetExecutionContext, rick_and_morty_asset: bool) -> None:
     """Runs dbt models for Rick and Morty API after loading data."""
 
     if not rick_and_morty_asset:
@@ -135,22 +136,15 @@ def dbt_rick_and_morty_data(context: OpExecutionContext, rick_and_morty_asset: b
         )
         return
 
-    DBT_PROJECT_DIR = Path("/workspaces/CamOnDagster/dbt").resolve()
-    context.log.info(f"📁 DBT Project Directory: {DBT_PROJECT_DIR}")
-
-    start = time.time()
     try:
-        result = subprocess.run(
-            "dbt build --select source:rick_and_morty+",
-            shell=True,
-            cwd=DBT_PROJECT_DIR,
-            capture_output=True,
-            text=True,
-            check=True
+        invocation = context.resources.dbt.cli(
+            ["build", "--select", "source:rick_and_morty+"],
+            context=context
         )
-        duration = round(time.time() - start, 2)
-        context.log.info(f"✅ dbt build completed in {duration}s")
-        context.log.info(result.stdout)
-    except subprocess.CalledProcessError as e:
-        context.log.error(f"❌ dbt build failed:\n{e.stdout}\n{e.stderr}")
+
+        # Wait for dbt to finish and get the full stdout log
+        invocation.wait()
+        return
+    except Exception as e:
+        context.log.error(f"dbt build failed:\n{e}")
         raise

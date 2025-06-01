@@ -1,4 +1,4 @@
-from dagster import asset, OpExecutionContext
+from dagster import asset, AssetExecutionContext
 import os
 import requests
 from dlt.sources.helpers import requests as dlt_requests
@@ -106,7 +106,7 @@ def create_dimension_resource(table_name, config, values, context):
 
 
 @dlt.source
-def dimension_data_source(context: OpExecutionContext):
+def dimension_data_source(context: AssetExecutionContext):
 
     DIMENSION_CONFIG = {
         "ingredients": {
@@ -230,7 +230,7 @@ def beverage_fact_data(context, dimension_data: bool) -> bool:
 @asset(deps=["beverage_fact_data"], group_name="Beverages",
        tags={"source": "Beverages"},
        required_resource_keys={"dbt"})
-def dbt_beverage_data(context: OpExecutionContext, beverage_fact_data: bool):
+def dbt_beverage_data(context: AssetExecutionContext, beverage_fact_data: bool):
     """Runs the dbt command after loading the data from Beverage API."""
     # return False
     if not beverage_fact_data:
@@ -244,8 +244,7 @@ def dbt_beverage_data(context: OpExecutionContext, beverage_fact_data: bool):
 
     try:
         invocation = context.resources.dbt.cli(
-            ["build", "--select", "source:beverages+"],
-            context=context
+            ["build", "--select", "source:beverages+"]
         )
 
         # Wait for dbt to finish and get the full stdout log

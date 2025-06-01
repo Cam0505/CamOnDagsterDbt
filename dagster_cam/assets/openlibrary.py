@@ -1,7 +1,6 @@
 import dlt
 import os
-from dagster import asset, OpExecutionContext
-import threading
+from dagster import asset, AssetExecutionContext
 from pandas import DataFrame
 import time
 import json
@@ -123,7 +122,7 @@ def openlibrary_dim_source(context, current_table):
 
 
 @asset(compute_kind="python", group_name="OpenLibrary", tags={"source": "OpenLibrary"})
-def openlibrary_books_asset(context: OpExecutionContext) -> DataFrame | None:
+def openlibrary_books_asset(context: AssetExecutionContext) -> DataFrame | None:
 
     pipeline = dlt.pipeline(
         pipeline_name="openlibrary_books",
@@ -237,7 +236,7 @@ def openlibrary_work_metadata(context, books_df) -> Iterator[Dict]:
 
 @asset(compute_kind="python", deps=["openlibrary_books_asset"],
        group_name="OpenLibrary", tags={"source": "OpenLibrary"})
-def openlibrary_subjects_asset(context: OpExecutionContext, books_df) -> bool:
+def openlibrary_subjects_asset(context: AssetExecutionContext, books_df) -> bool:
 
     if books_df is None or books_df.empty:
         context.log.warning(
@@ -262,7 +261,7 @@ def openlibrary_subjects_asset(context: OpExecutionContext, books_df) -> bool:
 
 @asset(deps=["openlibrary_subjects_asset"], group_name="OpenLibrary",
        tags={"source": "OpenLibrary"}, required_resource_keys={"dbt"})
-def dbt_openlibrary_data(context: OpExecutionContext, openlibrary_subjects_asset: bool) -> None:
+def dbt_openlibrary_data(context: AssetExecutionContext, openlibrary_subjects_asset: bool) -> None:
     """Runs the dbt command after loading the data from Geo API."""
 
     if not openlibrary_subjects_asset:

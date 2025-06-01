@@ -1,4 +1,4 @@
-from dagster import asset, OpExecutionContext
+from dagster import asset, AssetExecutionContext
 import os
 import pandas as pd
 from dotenv import load_dotenv
@@ -139,7 +139,7 @@ def fetch_city_chunk_data(city: str, city_info: dict, city_start: date, end_date
 
 
 @dlt.source
-def openmeteo_source(cities: dict, base_start_date: date, end_date: date, row_max_min: Dict[str, Dict[str, date]], context: OpExecutionContext):
+def openmeteo_source(cities: dict, base_start_date: date, end_date: date, row_max_min: Dict[str, Dict[str, date]], context: AssetExecutionContext):
 
     @dlt.resource(name="daily_weather", write_disposition="merge", primary_key=["date", "City"])
     def weather_resource():
@@ -222,7 +222,7 @@ def openmeteo_source(cities: dict, base_start_date: date, end_date: date, row_ma
 
 
 @asset(compute_kind="python", group_name="Open_Meteo", tags={"source": "Open_Meteo"})
-def openmeteo_asset(context: OpExecutionContext) -> bool:
+def openmeteo_asset(context: AssetExecutionContext) -> bool:
 
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
@@ -295,7 +295,7 @@ def openmeteo_asset(context: OpExecutionContext) -> bool:
 
 @asset(deps=["openmeteo_asset"], group_name="Open_Meteo",
        tags={"source": "Open_Meteo"}, required_resource_keys={"dbt"})
-def dbt_meteo_data(context: OpExecutionContext, openmeteo_asset: bool) -> None:
+def dbt_meteo_data(context: AssetExecutionContext, openmeteo_asset: bool) -> None:
     """Runs the dbt command after loading the data from OpenMeteo API."""
 
     if not openmeteo_asset:
@@ -309,8 +309,7 @@ def dbt_meteo_data(context: OpExecutionContext, openmeteo_asset: bool) -> None:
 
     try:
         invocation = context.resources.dbt.cli(
-            ["build", "--select", "source:meals+"],
-            context=context
+            ["build", "--select", "source:meals+"]
         )
 
         # Wait for dbt to finish and get the full stdout log
