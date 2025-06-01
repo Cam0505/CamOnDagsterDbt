@@ -6,4 +6,4 @@ longitude::DOUBLE as longitude, altitude::INT as altitude,
 case when timezone = '\N' then NULL else timezone end as timezone,
 case when dst = '\N' then NULL else dst end as dst, 
 case when tz_database_time_zone = '\N' then NULL else tz_database_time_zone end as database_time_zone
-FROM {{ source("openflights", "airports") }}
+FROM {{ source("openflights", "airports_asset") }}

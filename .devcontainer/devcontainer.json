@@ -10,7 +10,13 @@
     "--memory=4g",
     "--init"
   ],
-  "postCreateCommand": "echo 'set -a && [ -f /workspaces/CamOnDagster/.env ] && source /workspaces/CamOnDagster/.env && set +a' >> ~/.bashrc",
+  "features": {
+    "docker-in-docker": {
+      "version": "latest",
+      "moby": true
+    }
+  },
+  "postStartCommand": ".devcontainer/startup.sh",
   "remoteUser": "vscode",
   "customizations": {
     "vscode": {

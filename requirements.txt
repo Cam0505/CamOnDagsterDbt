@@ -10,6 +10,7 @@ dagster-dlt==0.26.18
 dagster-duckdb-pandas==0.26.18
 dagster-postgres==0.26.18
 
+docker==7.1.0
 # dlt and dependencies
 dlt==1.10.0
 duckdb==1.2.2

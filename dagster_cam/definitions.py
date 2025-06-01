@@ -1,10 +1,12 @@
-from dagster_cam.assets import airlines_asset, planes_asset, airports_asset, routes_asset
-from dagster_cam.jobs import airline_job
+# from dagster_cam.assets import airlines_asset, planes_asset, airports_asset, routes_asset
+# from dagster_cam.jobs import airline_job
 # from dagster_cam.jobs import gsheets_financial_with_dbt_job
 # from dagster_cam.assets import openmeteo_asset, dbt_meteo_data
 # from dagster_cam.jobs import open_meteo_job
 # from dagster_cam.jobs import openlibrary_job
 # from dagster_cam.assets import openlibrary_books_asset, openlibrary_subjects_asset, dbt_openlibrary_data
+from dagster_cam.jobs import geo_data_job
+from dagster_cam.assets import get_geo_data, dbt_geo_data
 from dagster_cam.sensors import camon_sensor
 from dagster_cam.schedules import schedules
 # from dagster_cam.assets import gsheet_finance_data, dbt_models
@@ -40,7 +42,6 @@ if not MotherDuck:
 # OpenLibrary Assets
 
 # GeoAPI Assets
-# from dagster_cam.assets import get_geo_data, dbt_geo_data
 
 # from dagster_cam.assets import uv_asset
 # from dagster_cam.jobs import uv_job
@@ -48,7 +49,6 @@ if not MotherDuck:
 # Jobs - uncomment as needed
 # from dagster_cam.jobs import beverage_dim_job
 # from dagster_cam.jobs import meals_dim_job
-# from dagster_cam.jobs import geo_data_job
 
 # Youtube
 # from dagster_cam.assets.youtube import youtube_pipeline
@@ -56,17 +56,17 @@ if not MotherDuck:
 
 
 # Define the assets
-all_assets = [airlines_asset, planes_asset, airports_asset, routes_asset]
+all_assets = [get_geo_data, dbt_geo_data]
 
 # Register the job, sensor, and schedule in the Definitions
 defs = Definitions(
     assets=all_assets,
     # Register only the airline job
-    jobs=[airline_job],
+    jobs=[geo_data_job],
     schedules=[schedules]  # ,
     # sensors=[camon_sensor]
     , resources={
-        "io_manager": DuckDBPandasIOManager(database=MotherDuck),
+        # "io_manager": DuckDBPandasIOManager(database=MotherDuck),
         "dbt": DbtCliResource(project_dir=DBT_DIR, profiles_dir=DBT_DIR),
     }
 )
@@ -75,14 +75,14 @@ defs = Definitions(
 if __name__ == "__main__":
     try:
         instance = DagsterInstance.get()
-        job = defs.get_job_def("airline_job")
+        job = defs.get_job_def("geo_data_job")
         result = job.execute_in_process(
             instance=instance,
             resources={
-                "io_manager": DuckDBPandasIOManager(database=MotherDuck),
+                # "io_manager": DuckDBPandasIOManager(database=MotherDuck),
                 "dbt": DbtCliResource(project_dir=DBT_DIR, profiles_dir=DBT_DIR),
             }
         )
-        print("airline_job Job finished:", result)
+        print("geo_data_job Job finished:", result)
     except Exception as e:
         print(f"Error executing job: {e}")

@@ -6,7 +6,7 @@ sources:
     schema: public
     description: "Source data from OpenFlights, a free database of airports, airlines, routes, and planes."
     tables:
-      - name: airlines_assets
-      - name: airports_assets
-      - name: planes_assets
-      - name: routes_assets
+      - name: airlines_asset
+      - name: airports_asset
+      - name: planes_asset
+      - name: routes_asset

@@ -37,4 +37,4 @@ CASE
             WHEN name ILIKE 'Hawker Siddeley%' THEN 'Hawker Siddeley'
             ELSE 'Other'
         END AS manufacturer
-FROM {{ source("openflights", "planes") }}
+FROM {{ source("openflights", "planes_asset") }}

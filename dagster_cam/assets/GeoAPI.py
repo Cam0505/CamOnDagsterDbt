@@ -1,4 +1,4 @@
-from dagster import asset, OpExecutionContext
+from dagster import asset, AssetExecutionContext
 import os
 from dotenv import load_dotenv
 import dlt
@@ -6,14 +6,15 @@ from dlt.pipeline.exceptions import PipelineNeverRan
 from dlt.destinations.exceptions import DatabaseUndefinedRelation
 import json
 from dlt.sources.helpers.requests import get
-from path_config import ENV_FILE, DLT_PIPELINE_DIR
+from path_config import ENV_FILE, DLT_PIPELINE_DIR, DBT_DIR
+
 
 load_dotenv(dotenv_path=ENV_FILE)
 COUNTRIES = ["AU", "NZ", "GB", "CA"]
 
 
 @dlt.source
-def geo_source(context: OpExecutionContext, row_counts_dict: dict):
+def geo_source(context: AssetExecutionContext, row_counts_dict: dict):
     @dlt.resource(name="geo_cities", write_disposition="merge", primary_key="city_id")
     def cities():
         # Initialize state at the start of each run
@@ -65,8 +66,13 @@ def geo_source(context: OpExecutionContext, row_counts_dict: dict):
             if country_code in bboxes:
                 params.update(bboxes[country_code])
             try:
-                cities_data = get(BASE_URL, params=params).json().get(
-                    "geonames", [])
+                response = get(BASE_URL, params=params)
+                response_json = response.json()
+                # context.log.info(
+                #     f"Raw API response for {country_code}: {json.dumps(response_json, indent=2)}")
+                cities_data = response_json.get("geonames", [])
+                # context.log.info(
+                #     f"Fetched {len(cities_data)} cities for {country_code}")
             except Exception as e:
                 context.log.error(
                     f"Failed to fetch cities for {country_code}: {e}")
@@ -93,6 +99,8 @@ def geo_source(context: OpExecutionContext, row_counts_dict: dict):
                 return
 
             for city in cities_data:
+                context.log.info(
+                    f"Processing city: {city.get('name')} ({city.get('geonameId')}) in {country_code}")
                 total_fetched += 1
                 details = fetch_city_details(city.get("geonameId")) or {}
 
@@ -129,8 +137,8 @@ def geo_source(context: OpExecutionContext, row_counts_dict: dict):
     return cities
 
 
-@asset(compute_kind="python", group_name="Geo", tags={"source": "Geo"})
-def get_geo_data(context: OpExecutionContext) -> bool:
+@asset(compute_kind="python", group_name="Geo", tags={"source": "Geo"}, io_manager_key=None)
+def get_geo_data(context: AssetExecutionContext) -> bool:
 
     context.log.info("Starting DLT pipeline...")
     pipeline = dlt.pipeline(
@@ -153,7 +161,7 @@ def get_geo_data(context: OpExecutionContext) -> bool:
         row_counts = None
     except DatabaseUndefinedRelation:
         context.log.warning(
-            "⚠️ Table Doesn't Exist. Assuming truncation.")
+            "⚠️ Table Doesn't Exist. Assuming deletion.")
         row_counts = None
 
     if row_counts is not None:
@@ -192,8 +200,8 @@ def get_geo_data(context: OpExecutionContext) -> bool:
 
 
 @asset(deps=["get_geo_data"], group_name="Geo",
-       tags={"source": "Geo"}, required_resource_keys={"dbt"})
-def dbt_geo_data(context: OpExecutionContext, get_geo_data: bool) -> None:
+       tags={"source": "Geo"}, required_resource_keys={"dbt"}, io_manager_key=None)
+def dbt_geo_data(context: AssetExecutionContext, get_geo_data: bool) -> None:
     """Runs the dbt command after loading the data from Geo API."""
 
     if not get_geo_data:
@@ -207,8 +215,7 @@ def dbt_geo_data(context: OpExecutionContext, get_geo_data: bool) -> None:
 
     try:
         invocation = context.resources.dbt.cli(
-            ["build", "--select", "source:geo+"],
-            context=context
+            ["build", "--select", "source:geo+"]
         )
 
         # Wait for dbt to finish and get the full stdout log
