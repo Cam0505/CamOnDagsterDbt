@@ -5,8 +5,10 @@
 # from dagster_cam.jobs import open_meteo_job
 # from dagster_cam.jobs import openlibrary_job
 # from dagster_cam.assets import openlibrary_books_asset, openlibrary_subjects_asset, dbt_openlibrary_data
-from dagster_cam.jobs import geo_data_job
-from dagster_cam.assets import get_geo_data, dbt_geo_data
+# from dagster_cam.jobs import geo_data_job
+# from dagster_cam.assets import get_geo_data, dbt_geo_data
+from dagster_cam.jobs import beverage_dim_job
+from dagster_cam.assets import ingredients_table, alcoholic_table, beverages_table, glass_table, beverage_fact_data, dbt_beverage_data
 from dagster_cam.sensors import camon_sensor
 from dagster_cam.schedules import schedules
 # from dagster_cam.assets import gsheet_finance_data, dbt_models
@@ -34,7 +36,6 @@ if not MotherDuck:
 
 
 # Beverages Assets
-# from dagster_cam.assets import dimension_data, beverage_fact_data, dbt_beverage_data
 
 # Meals Assets
 # from dagster_cam.assets import meals_dim_data, meals_dimension_data, meals_fact_data, dbt_meals_data
@@ -47,7 +48,6 @@ if not MotherDuck:
 # from dagster_cam.jobs import uv_job
 
 # Jobs - uncomment as needed
-# from dagster_cam.jobs import beverage_dim_job
 # from dagster_cam.jobs import meals_dim_job
 
 # Youtube
@@ -56,13 +56,14 @@ if not MotherDuck:
 
 
 # Define the assets
-all_assets = [get_geo_data, dbt_geo_data]
+all_assets = [ingredients_table, alcoholic_table, beverages_table,
+              glass_table, beverage_fact_data, dbt_beverage_data]
 
 # Register the job, sensor, and schedule in the Definitions
 defs = Definitions(
     assets=all_assets,
     # Register only the airline job
-    jobs=[geo_data_job],
+    jobs=[beverage_dim_job],
     schedules=[schedules]  # ,
     # sensors=[camon_sensor]
     , resources={
@@ -75,14 +76,14 @@ defs = Definitions(
 if __name__ == "__main__":
     try:
         instance = DagsterInstance.get()
-        job = defs.get_job_def("geo_data_job")
+        job = defs.get_job_def("beverage_dim_job")
         result = job.execute_in_process(
             instance=instance,
             resources={
-                # "io_manager": DuckDBPandasIOManager(database=MotherDuck),
+                "io_manager": DuckDBPandasIOManager(database=MotherDuck),
                 "dbt": DbtCliResource(project_dir=DBT_DIR, profiles_dir=DBT_DIR),
             }
         )
-        print("geo_data_job Job finished:", result)
+        print("beverage_dim_job Job finished:", result)
     except Exception as e:
         print(f"Error executing job: {e}")

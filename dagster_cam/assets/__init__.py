@@ -10,7 +10,10 @@ from .airlines import (
 )
 from .uv import uv_asset, dbt_uv_data
 from .Beverages import (
-    dimension_data,
+    ingredients_table,
+    alcoholic_table,
+    beverages_table,
+    glass_table,
     beverage_fact_data,
     dbt_beverage_data,
 )
@@ -28,7 +31,10 @@ __all__ = [
     "camon_dbt_assets",
     "gsheet_finance_data",
     "dbt_models",
-    "dimension_data",
+    "ingredients_table",
+    "alcoholic_table",
+    "beverages_table",
+    "glass_table",
     "beverage_fact_data",
     "dbt_beverage_data",
     "meals_dim_data",

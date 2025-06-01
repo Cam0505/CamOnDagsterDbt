@@ -3,12 +3,14 @@ version: 2
 sources:
   - name: beverages
     database: camondagster
-    schema: beverage_data
+    schema: public
     tables:
-    # Alcoholic
       - name: alcoholic_table
     # Consumption Fact
-      - name: consumption
+      - name: beverage_fact_data
+        meta:
+          dagster:
+            asset_key: ["beverage_fact_data"]
     # Beverage Type
       - name: beverages_table
     # Glass Type

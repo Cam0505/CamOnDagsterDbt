@@ -21,7 +21,7 @@
 }}
 
 SELECT 
-    id_drink as beverage_id, source_glass as glass_type
+    iddrink as beverage_id, source_glass as glass_type
     ,{{ dbt_utils.generate_surrogate_key(["glass_type"]) }} as Glass_Type_SK
 from {{ source("beverages", "glass_table") }}
 

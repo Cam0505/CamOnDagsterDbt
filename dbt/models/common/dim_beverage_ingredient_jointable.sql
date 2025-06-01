@@ -8,6 +8,6 @@
 -- 2025-05-17 | Cam      | Initial creation
 -- YYYY-MM-DD | NAME     | [Add future changes here]
 -- ------------------------------------------------------------------------------
-SELECT distinct id_drink as Beverage_ID
+SELECT distinct idDrink as Beverage_ID
     from {{ source("beverages", "ingredients_table") }} as it
-    where id_drink is not null
+    where idDrink is not null
